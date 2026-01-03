@@ -7,6 +7,324 @@
 
 import Foundation
 
+// MARK: - Built-in Tool Configurations
+
+public struct WebSearchConfig: Codable, Sendable, Equatable {
+    public var userLocation: UserLocation?
+    public var searchContextSize: SearchContextSize?
+
+    public struct UserLocation: Codable, Sendable, Equatable {
+        public var type: String
+        public var city: String?
+        public var region: String?
+        public var country: String?
+        public var timezone: String?
+
+        public init(
+            type: String = "approximate",
+            city: String? = nil,
+            region: String? = nil,
+            country: String? = nil,
+            timezone: String? = nil
+        ) {
+            self.type = type
+            self.city = city
+            self.region = region
+            self.country = country
+            self.timezone = timezone
+        }
+    }
+
+    public enum SearchContextSize: String, Codable, Sendable {
+        case low, medium, high
+    }
+
+    public init(
+        userLocation: UserLocation? = nil,
+        searchContextSize: SearchContextSize? = nil
+    ) {
+        self.userLocation = userLocation
+        self.searchContextSize = searchContextSize
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case userLocation = "user_location"
+        case searchContextSize = "search_context_size"
+    }
+}
+
+public struct FileSearchConfig: Codable, Sendable, Equatable {
+    public var vectorStoreIds: [String]?
+    public var maxNumResults: Int?
+    public var rankingOptions: RankingOptions?
+
+    public struct RankingOptions: Codable, Sendable, Equatable {
+        public var ranker: String?
+        public var scoreThreshold: Double?
+
+        public init(ranker: String? = nil, scoreThreshold: Double? = nil) {
+            self.ranker = ranker
+            self.scoreThreshold = scoreThreshold
+        }
+
+        enum CodingKeys: String, CodingKey {
+            case ranker
+            case scoreThreshold = "score_threshold"
+        }
+    }
+
+    public init(
+        vectorStoreIds: [String]? = nil,
+        maxNumResults: Int? = nil,
+        rankingOptions: RankingOptions? = nil
+    ) {
+        self.vectorStoreIds = vectorStoreIds
+        self.maxNumResults = maxNumResults
+        self.rankingOptions = rankingOptions
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case vectorStoreIds = "vector_store_ids"
+        case maxNumResults = "max_num_results"
+        case rankingOptions = "ranking_options"
+    }
+}
+
+public struct ComputerUseConfig: Codable, Sendable, Equatable {
+    public var displayWidth: Int
+    public var displayHeight: Int
+    public var environment: String?
+
+    public init(displayWidth: Int, displayHeight: Int, environment: String? = nil) {
+        self.displayWidth = displayWidth
+        self.displayHeight = displayHeight
+        self.environment = environment
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case displayWidth = "display_width"
+        case displayHeight = "display_height"
+        case environment
+    }
+}
+
+public struct CodeInterpreterConfig: Codable, Sendable, Equatable {
+    public var container: ContainerConfig?
+
+    public struct ContainerConfig: Codable, Sendable, Equatable {
+        public var type: String?
+        public var containerId: String?
+
+        public init(type: String? = nil, containerId: String? = nil) {
+            self.type = type
+            self.containerId = containerId
+        }
+
+        enum CodingKeys: String, CodingKey {
+            case type
+            case containerId = "container_id"
+        }
+    }
+
+    public init(container: ContainerConfig? = nil) {
+        self.container = container
+    }
+}
+
+public struct MCPToolConfig: Codable, Sendable, Equatable {
+    public var serverLabel: String
+    public var serverUrl: String?
+    public var allowedTools: [String]?
+
+    public init(serverLabel: String, serverUrl: String? = nil, allowedTools: [String]? = nil) {
+        self.serverLabel = serverLabel
+        self.serverUrl = serverUrl
+        self.allowedTools = allowedTools
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case serverLabel = "server_label"
+        case serverUrl = "server_url"
+        case allowedTools = "allowed_tools"
+    }
+}
+
+// MARK: - ResponseTool Enum
+
+public enum ResponseTool: Codable, Sendable, Equatable {
+    case webSearch(WebSearchConfig? = nil)
+    case fileSearch(FileSearchConfig? = nil)
+    case codeInterpreter(CodeInterpreterConfig? = nil)
+    case computerUse(ComputerUseConfig)
+    case function(ResponseToolDefinition)
+    case mcp(MCPToolConfig)
+    case other(type: String, payload: [String: AnyCodable])
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let dictionary = try container.decode([String: AnyCodable].self)
+
+        guard let type = dictionary["type"]?.stringValue else {
+            throw DecodingError.dataCorruptedError(
+                in: container,
+                debugDescription: "Missing 'type' field in tool definition"
+            )
+        }
+
+        switch type {
+        case "web_search":
+            if dictionary.count > 1 {
+                let data = try JSONSerialization.data(withJSONObject: dictionary.jsonObject())
+                let config = try JSONDecoder().decode(WebSearchConfig.self, from: data)
+                self = .webSearch(config)
+            } else {
+                self = .webSearch(nil)
+            }
+
+        case "file_search":
+            if dictionary.count > 1 {
+                let data = try JSONSerialization.data(withJSONObject: dictionary.jsonObject())
+                let config = try JSONDecoder().decode(FileSearchConfig.self, from: data)
+                self = .fileSearch(config)
+            } else {
+                self = .fileSearch(nil)
+            }
+
+        case "code_interpreter":
+            if dictionary.count > 1 {
+                let data = try JSONSerialization.data(withJSONObject: dictionary.jsonObject())
+                let config = try JSONDecoder().decode(CodeInterpreterConfig.self, from: data)
+                self = .codeInterpreter(config)
+            } else {
+                self = .codeInterpreter(nil)
+            }
+
+        case "computer_use":
+            let data = try JSONSerialization.data(withJSONObject: dictionary.jsonObject())
+            let config = try JSONDecoder().decode(ComputerUseConfig.self, from: data)
+            self = .computerUse(config)
+
+        case "function":
+            let data = try JSONSerialization.data(withJSONObject: dictionary.jsonObject())
+            let definition = try JSONDecoder().decode(ResponseToolDefinition.self, from: data)
+            self = .function(definition)
+
+        case "mcp":
+            let data = try JSONSerialization.data(withJSONObject: dictionary.jsonObject())
+            let config = try JSONDecoder().decode(MCPToolConfig.self, from: data)
+            self = .mcp(config)
+
+        default:
+            self = .other(type: type, payload: dictionary)
+        }
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+
+        switch self {
+        case .webSearch(let config):
+            var payload: [String: AnyCodable] = ["type": AnyCodable("web_search")]
+            if let config {
+                if let userLocation = config.userLocation {
+                    var locationDict: [String: Any] = ["type": userLocation.type]
+                    if let city = userLocation.city { locationDict["city"] = city }
+                    if let region = userLocation.region { locationDict["region"] = region }
+                    if let country = userLocation.country { locationDict["country"] = country }
+                    if let timezone = userLocation.timezone { locationDict["timezone"] = timezone }
+                    payload["user_location"] = AnyCodable(locationDict)
+                }
+                if let size = config.searchContextSize {
+                    payload["search_context_size"] = AnyCodable(size.rawValue)
+                }
+            }
+            try container.encode(payload)
+
+        case .fileSearch(let config):
+            var payload: [String: AnyCodable] = ["type": AnyCodable("file_search")]
+            if let config {
+                if let ids = config.vectorStoreIds {
+                    payload["vector_store_ids"] = AnyCodable(ids)
+                }
+                if let max = config.maxNumResults {
+                    payload["max_num_results"] = AnyCodable(max)
+                }
+                if let ranking = config.rankingOptions {
+                    var rankingDict: [String: Any] = [:]
+                    if let ranker = ranking.ranker { rankingDict["ranker"] = ranker }
+                    if let threshold = ranking.scoreThreshold { rankingDict["score_threshold"] = threshold }
+                    if !rankingDict.isEmpty {
+                        payload["ranking_options"] = AnyCodable(rankingDict)
+                    }
+                }
+            }
+            try container.encode(payload)
+
+        case .codeInterpreter(let config):
+            var payload: [String: AnyCodable] = ["type": AnyCodable("code_interpreter")]
+            if let config, let containerConfig = config.container {
+                var containerDict: [String: Any] = [:]
+                if let type = containerConfig.type { containerDict["type"] = type }
+                if let id = containerConfig.containerId { containerDict["container_id"] = id }
+                if !containerDict.isEmpty {
+                    payload["container"] = AnyCodable(containerDict)
+                }
+            }
+            try container.encode(payload)
+
+        case .computerUse(let config):
+            var payload: [String: AnyCodable] = [
+                "type": AnyCodable("computer_use"),
+                "display_width": AnyCodable(config.displayWidth),
+                "display_height": AnyCodable(config.displayHeight)
+            ]
+            if let env = config.environment {
+                payload["environment"] = AnyCodable(env)
+            }
+            try container.encode(payload)
+
+        case .function(let definition):
+            try container.encode(definition)
+
+        case .mcp(let config):
+            var payload: [String: AnyCodable] = [
+                "type": AnyCodable("mcp"),
+                "server_label": AnyCodable(config.serverLabel)
+            ]
+            if let url = config.serverUrl {
+                payload["server_url"] = AnyCodable(url)
+            }
+            if let allowed = config.allowedTools {
+                payload["allowed_tools"] = AnyCodable(allowed)
+            }
+            try container.encode(payload)
+
+        case .other(_, let payload):
+            try container.encode(payload)
+        }
+    }
+}
+
+// MARK: - ResponseTool Convenience Initializers
+
+public extension ResponseTool {
+    static var webSearch: ResponseTool { .webSearch(nil) }
+    static var fileSearch: ResponseTool { .fileSearch(nil) }
+    static var codeInterpreter: ResponseTool { .codeInterpreter(nil) }
+
+    static func function(
+        name: String,
+        description: String? = nil,
+        parameters: JSONSchema
+    ) -> ResponseTool {
+        .function(ResponseToolDefinition(
+            name: name,
+            description: description,
+            inputSchema: parameters
+        ))
+    }
+}
+
 // MARK: - Tool Definitions
 
 public struct ResponseToolDefinition: Codable, Sendable, Equatable {

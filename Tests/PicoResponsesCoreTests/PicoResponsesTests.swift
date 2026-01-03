@@ -58,7 +58,7 @@ private func parseEvents(_ frames: [String]) async -> [EventSource.Event] {
         seed: 123,
         parallelToolCalls: false,
         tools: [
-            ResponseToolDefinition(
+            .function(ResponseToolDefinition(
                 name: "weather",
                 description: "Get the forecast",
                 inputSchema: .object(
@@ -72,7 +72,7 @@ private func parseEvents(_ frames: [String]) async -> [EventSource.Event] {
                     required: ["location"],
                     additionalProperties: .boolean(false)
                 )
-            )
+            ))
         ],
         toolChoice: .auto,
         session: "sess_123",

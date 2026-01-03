@@ -657,7 +657,7 @@ public struct ResponseCreateRequest: Codable, Sendable, Equatable {
     public var logitBias: [String: Double]?
     public var seed: Int?
     public var parallelToolCalls: Bool?
-    public var tools: [ResponseToolDefinition]?
+    public var tools: [ResponseTool]?
     public var toolChoice: ToolChoice?
     public var session: String?
     public var previousResponseId: String?
@@ -683,7 +683,7 @@ public struct ResponseCreateRequest: Codable, Sendable, Equatable {
         logitBias: [String: Double]? = nil,
         seed: Int? = nil,
         parallelToolCalls: Bool? = nil,
-        tools: [ResponseToolDefinition]? = nil,
+        tools: [ResponseTool]? = nil,
         toolChoice: ToolChoice? = nil,
         session: String? = nil,
         previousResponseId: String? = nil
