@@ -515,8 +515,8 @@ public struct ResponseObject: Codable, Sendable, Equatable {
     public var instructions: String?
     public var output: [ResponseOutput]
     public var metadata: [String: AnyCodable]?
-    public var temperature: Double?
-    public var topP: Double?
+    public var temperature: Float?
+    public var topP: Float?
     public var conversationId: String?
     public var session: String?
     public var finishReason: String?
@@ -540,8 +540,8 @@ public struct ResponseObject: Codable, Sendable, Equatable {
         instructions: String? = nil,
         output: [ResponseOutput] = [],
         metadata: [String: AnyCodable]? = nil,
-        temperature: Double? = nil,
-        topP: Double? = nil,
+        temperature: Float? = nil,
+        topP: Float? = nil,
         conversationId: String? = nil,
         session: String? = nil,
         finishReason: String? = nil,
@@ -637,24 +637,24 @@ public struct ResponseList: Codable, Sendable, Equatable {
 // MARK: - Request Payload
 
 public struct ResponseCreateRequest: Codable, Sendable, Equatable {
-    public var model: String
+    public var model: String?
     public var input: [ResponseInputItem]
     public var instructions: String?
     public var modalities: [ResponseModality]?
     public var responseFormat: ResponseFormat?
     public var audio: ResponseAudioOptions?
     public var metadata: [String: AnyCodable]?
-    public var temperature: Double?
-    public var topP: Double?
+    public var temperature: Float?
+    public var topP: Float?
     public var stream: Bool?
-    public var frequencyPenalty: Double?
-    public var presencePenalty: Double?
+    public var frequencyPenalty: Float?
+    public var presencePenalty: Float?
     public var stop: [String]?
     public var maxOutputTokens: Int?
     public var maxInputTokens: Int?
     public var truncationStrategy: ResponseTruncationStrategy?
     public var reasoning: ResponseReasoningOptions?
-    public var logitBias: [String: Double]?
+    public var logitBias: [String: Float]?
     public var seed: Int?
     public var parallelToolCalls: Bool?
     public var tools: [ResponseTool]?
@@ -663,24 +663,24 @@ public struct ResponseCreateRequest: Codable, Sendable, Equatable {
     public var previousResponseId: String?
 
     public init(
-        model: String,
+        model: String? = nil,
         input: [ResponseInputItem],
         instructions: String? = nil,
         modalities: [ResponseModality]? = nil,
         responseFormat: ResponseFormat? = nil,
         audio: ResponseAudioOptions? = nil,
         metadata: [String: AnyCodable]? = nil,
-        temperature: Double? = nil,
-        topP: Double? = nil,
+        temperature: Float? = nil,
+        topP: Float? = nil,
         stream: Bool? = nil,
-        frequencyPenalty: Double? = nil,
-        presencePenalty: Double? = nil,
+        frequencyPenalty: Float? = nil,
+        presencePenalty: Float? = nil,
         stop: [String]? = nil,
         maxOutputTokens: Int? = nil,
         maxInputTokens: Int? = nil,
         truncationStrategy: ResponseTruncationStrategy? = nil,
         reasoning: ResponseReasoningOptions? = nil,
-        logitBias: [String: Double]? = nil,
+        logitBias: [String: Float]? = nil,
         seed: Int? = nil,
         parallelToolCalls: Bool? = nil,
         tools: [ResponseTool]? = nil,
