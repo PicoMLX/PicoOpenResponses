@@ -7,26 +7,26 @@ public struct ConversationRequestBuilder: Sendable {
         case fullConversation
     }
 
-    public var model: String
+    public var model: String?
     public var instructions: String?
     public var parallelToolCalls: Bool?
     public var metadata: [String: AnyCodable]?
-    public var temperature: Double?
-    public var topP: Double?
-    public var frequencyPenalty: Double?
-    public var presencePenalty: Double?
+    public var temperature: Float?
+    public var topP: Float?
+    public var frequencyPenalty: Float?
+    public var presencePenalty: Float?
     public var maxOutputTokens: Int?
     public var historyStrategy: HistoryStrategy
 
     public init(
-        model: String,
+        model: String? = nil,
         instructions: String? = nil,
         parallelToolCalls: Bool? = nil,
         metadata: [String: AnyCodable]? = nil,
-        temperature: Double? = nil,
-        topP: Double? = nil,
-        frequencyPenalty: Double? = nil,
-        presencePenalty: Double? = nil,
+        temperature: Float? = nil,
+        topP: Float? = nil,
+        frequencyPenalty: Float? = nil,
+        presencePenalty: Float? = nil,
         maxOutputTokens: Int? = nil,
         historyStrategy: HistoryStrategy = .latestMessage
     ) {
