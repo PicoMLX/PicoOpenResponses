@@ -54,6 +54,10 @@ struct SelectServerView: View {
                     Button("Groq") {
                         server = (URL(string: "https://api.groq.com/openai/v1")!, "<#gsk-xxxxx#>", ["openai/gpt-oss-20b"])
                     }
+                    Button("Groq") {
+                        // FIXME: Groq doesn't support `previous_response_id`. ConversationBuilder needs to be initiated using `historyStrategy: .fullConversation`
+                        server = (URL(string: "https://api.groq.com/openai/v1")!, "<#gsk-xxxxx#>", ["openai/gpt-oss-20b"])
+                    }
                     Button("LM Studio") {
                         server = (URL(string:"http://localhost:1234/v1")!, nil, ["liquid/lfm2-1.2b"])
                     }
@@ -81,6 +85,7 @@ private struct ModelListResponse: Decodable {
 }
 
 private func fetchModels(from endpoint: URL) async -> [String] {
+//    return []
     do {
         let (data, response) = try await URLSession.shared.data(from: endpoint)
         guard let httpResponse = response as? HTTPURLResponse, (200..<300).contains(httpResponse.statusCode) else {
