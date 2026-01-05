@@ -396,10 +396,10 @@ private func parseEvents(_ frames: [String]) async -> [EventSource.Event] {
     #expect(completedEvent.completedResponse?.id == "resp_123")
 
     let errorEvent = ResponseStreamEvent(
-        type: "response.error",
+        type: "error",
         data: ["error": AnyCodable(["message": "failed", "type": "server_error"])]
     )
-    #expect(errorEvent.kind == .responseError)
+    #expect(errorEvent.kind == .error)
     #expect(errorEvent.isTerminal)
     #expect(errorEvent.streamError?.message == "failed")
 }

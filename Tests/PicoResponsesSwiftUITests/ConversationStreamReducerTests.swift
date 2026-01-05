@@ -69,8 +69,8 @@ final class ConversationStreamReducerTests: XCTestCase {
     func testWebSearchEventsUpdatePhase() {
         var snapshot = ConversationStateSnapshot()
 
-        let created = ResponseStreamEvent(type: "response.web_search_call.created", data: [:])
-        snapshot = ConversationStreamReducer.reduce(snapshot: snapshot, with: created)
+        let inProgress = ResponseStreamEvent(type: "response.web_search_call.in_progress", data: [:])
+        snapshot = ConversationStreamReducer.reduce(snapshot: snapshot, with: inProgress)
         if case .initiated = snapshot.webSearchPhase {
             // ok
         } else {
@@ -89,8 +89,9 @@ final class ConversationStreamReducerTests: XCTestCase {
     func testReasoningEventsUpdatePhase() {
         var snapshot = ConversationStateSnapshot()
 
-        let created = ResponseStreamEvent(type: "response.reasoning.created", data: [:])
-        snapshot = ConversationStreamReducer.reduce(snapshot: snapshot, with: created)
+        // Use response.reasoning_summary_part.added which triggers containsCreationIndicator (.added)
+        let added = ResponseStreamEvent(type: "response.reasoning_summary_part.added", data: [:])
+        snapshot = ConversationStreamReducer.reduce(snapshot: snapshot, with: added)
         if case .drafting = snapshot.reasoningPhase {
             // ok
         } else {
@@ -105,8 +106,9 @@ final class ConversationStreamReducerTests: XCTestCase {
             XCTFail("Expected reasoning phase")
         }
 
-        let completed = ResponseStreamEvent(type: "response.reasoning_summary.completed", data: ["summary": AnyCodable("All good")])
-        snapshot = ConversationStreamReducer.reduce(snapshot: snapshot, with: completed)
+        // Use response.reasoning_summary_text.done which triggers containsCompletionIndicator (.done)
+        let done = ResponseStreamEvent(type: "response.reasoning_summary_text.done", data: ["text": AnyCodable("All good")])
+        snapshot = ConversationStreamReducer.reduce(snapshot: snapshot, with: done)
         if case .completed(let summary) = snapshot.reasoningPhase {
             XCTAssertEqual(summary, "All good")
         } else {
@@ -117,8 +119,9 @@ final class ConversationStreamReducerTests: XCTestCase {
     func testToolCallEventsUpdatePhase() {
         var snapshot = ConversationStateSnapshot()
 
-        let created = ResponseStreamEvent(type: "response.tool_call.created", data: ["name": AnyCodable("calendar"), "type": AnyCodable("function")])
-        snapshot = ConversationStreamReducer.reduce(snapshot: snapshot, with: created)
+        // Use function_call_arguments.delta which contains .delta (triggers containsCreationIndicator or delta check)
+        let delta = ResponseStreamEvent(type: "response.function_call_arguments.delta", data: ["name": AnyCodable("calendar"), "type": AnyCodable("function")])
+        snapshot = ConversationStreamReducer.reduce(snapshot: snapshot, with: delta)
         if case .running(let name, let type) = snapshot.toolCallPhase {
             XCTAssertEqual(name, "calendar")
             XCTAssertEqual(type, "function")
@@ -126,8 +129,9 @@ final class ConversationStreamReducerTests: XCTestCase {
             XCTFail("Expected running phase")
         }
 
-        let completed = ResponseStreamEvent(type: "response.tool_call.completed", data: ["name": AnyCodable("calendar"), "type": AnyCodable("function")])
-        snapshot = ConversationStreamReducer.reduce(snapshot: snapshot, with: completed)
+        // Use function_call_arguments.done which contains .done (triggers containsCompletionIndicator)
+        let done = ResponseStreamEvent(type: "response.function_call_arguments.done", data: ["name": AnyCodable("calendar"), "type": AnyCodable("function")])
+        snapshot = ConversationStreamReducer.reduce(snapshot: snapshot, with: done)
         if case .completed(let name, _) = snapshot.toolCallPhase {
             XCTAssertEqual(name, "calendar")
         } else {
@@ -210,28 +214,28 @@ final class ConversationStreamReducerTests: XCTestCase {
     func testFileSearchEventsUpdatePhase() {
         var snapshot = ConversationStateSnapshot()
 
-        let created = ResponseStreamEvent(type: "response.file_search_call.created", data: [:])
-        snapshot = ConversationStreamReducer.reduce(snapshot: snapshot, with: created)
+        let inProgress = ResponseStreamEvent(type: "response.file_search_call.in_progress", data: [:])
+        snapshot = ConversationStreamReducer.reduce(snapshot: snapshot, with: inProgress)
         if case .preparing = snapshot.fileSearchPhase {
             // ok
         } else {
             XCTFail("Expected preparing phase")
         }
 
-        let delta = ResponseStreamEvent(type: "response.file_search_call.delta", data: [:])
-        snapshot = ConversationStreamReducer.reduce(snapshot: snapshot, with: delta)
+        let searching = ResponseStreamEvent(type: "response.file_search_call.searching", data: [:])
+        snapshot = ConversationStreamReducer.reduce(snapshot: snapshot, with: searching)
         if case .searching = snapshot.fileSearchPhase {
             // ok
         } else {
             XCTFail("Expected searching phase")
         }
 
-        let failed = ResponseStreamEvent(type: "response.file_search_call.failed", data: ["error": AnyCodable("timeout")])
-        snapshot = ConversationStreamReducer.reduce(snapshot: snapshot, with: failed)
-        if case .failed(let reason) = snapshot.fileSearchPhase {
-            XCTAssertEqual(reason, "timeout")
+        let completed = ResponseStreamEvent(type: "response.file_search_call.completed", data: [:])
+        snapshot = ConversationStreamReducer.reduce(snapshot: snapshot, with: completed)
+        if case .completed = snapshot.fileSearchPhase {
+            // ok
         } else {
-            XCTFail("Expected failed phase")
+            XCTFail("Expected completed phase")
         }
     }
 

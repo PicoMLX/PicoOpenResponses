@@ -162,6 +162,125 @@ let stream = await liveService.startConversation(
 
 `FilesClient` provides helpers for multi-part uploads via `sendMultipart` and raw downloads via `sendRawData`. Construct an array of `HTTPClient.MultipartPart` for each upload part, then call `filesClient.upload(...)`.
 
+## Server-Side Usage (Hummingbird / MLX)
+
+PicoResponsesCore can also be used server-side to produce OpenAI-compatible Responses API output. The package provides type-safe factory methods and convenience initializers for building responses.
+
+### Validating Incoming Requests
+
+```swift
+func handleRequest(_ input: ResponseCreateRequest) async throws -> Response {
+    try input.validate()  // Validates temperature, topP, penalties, token limits
+    // ... process request
+}
+```
+
+### Building Non-Streaming Responses
+
+Use the convenience initializers to construct properly formatted response objects:
+
+```swift
+let output = ResponseOutput.message(
+    text: completionText,
+    role: .assistant,
+    status: "completed",
+    finishReason: "stop"
+)
+
+let response = ResponseObject.completed(
+    model: modelName,
+    output: [output],
+    usage: ResponseUsage(
+        inputTokens: promptTokenCount,
+        outputTokens: generationTokenCount,
+        totalTokens: promptTokenCount + generationTokenCount
+    )
+)
+```
+
+For error responses:
+
+```swift
+let response = ResponseObject.failed(
+    model: modelName,
+    error: ResponseError(code: "server_error", message: "Generation failed")
+)
+```
+
+### Building Streaming Events
+
+Use the type-safe factory methods on `ResponseStreamEvent` to construct SSE events:
+
+```swift
+var sequenceNumber = 0
+
+// Send response.created event
+let createdEvent = ResponseStreamEvent.created(
+    response: ResponseObject.inProgress(model: modelName),
+    sequenceNumber: sequenceNumber
+)
+sequenceNumber += 1
+
+// Send text deltas during generation
+for token in tokenStream {
+    let deltaEvent = ResponseStreamEvent.outputTextDelta(
+        itemId: messageId,
+        outputIndex: 0,
+        contentIndex: 0,
+        delta: token,
+        sequenceNumber: sequenceNumber
+    )
+    sequenceNumber += 1
+    // yield deltaEvent to SSE stream
+}
+
+// Send completion event
+let completedEvent = ResponseStreamEvent.completed(
+    response: finalResponseObject,
+    sequenceNumber: sequenceNumber
+)
+
+// Send done event
+let doneEvent = ResponseStreamEvent.done()
+```
+
+### Event Type Safety
+
+All 40+ OpenAI streaming event types are available as enum cases:
+
+```swift
+// Use the Kind enum for type-safe event construction
+let event = ResponseStreamEvent(kind: .responseOutputTextDelta, data: [...])
+
+// Check event types
+switch event.kind {
+case .responseOutputTextDelta:
+    // Handle text delta
+case .responseReasoningTextDelta:
+    // Handle reasoning text
+case .responseFunctionCallArgumentsDelta:
+    // Handle function call
+case .responseCompleted, .responseFailed, .responseIncomplete:
+    // Terminal states
+default:
+    break
+}
+```
+
+### Accessing Event Properties
+
+```swift
+let event: ResponseStreamEvent = ...
+
+// Common accessors
+event.sequenceNumber   // Int?
+event.itemId           // String?
+event.outputIndex      // Int?
+event.contentIndex     // Int?
+event.isTerminal       // Bool - true for completed/failed/done
+event.isKnownEventType // Bool - true if type matches a known Kind
+```
+
 ## Error Handling
 
 - All networking errors are surfaced as `PicoResponsesError` with `LocalizedError` descriptions.

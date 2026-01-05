@@ -85,7 +85,7 @@ private struct ModelListResponse: Decodable {
 }
 
 private func fetchModels(from endpoint: URL) async -> [String] {
-//    return []
+    return []
     do {
         let (data, response) = try await URLSession.shared.data(from: endpoint)
         guard let httpResponse = response as? HTTPURLResponse, (200..<300).contains(httpResponse.statusCode) else {

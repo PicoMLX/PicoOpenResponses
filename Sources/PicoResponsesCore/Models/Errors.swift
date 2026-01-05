@@ -45,6 +45,7 @@ public enum PicoResponsesError: Error, Sendable {
     case apiError(statusCode: Int, error: PicoResponsesAPIError, data: Data?)
     case networkError(underlying: Error)
     case streamDecodingFailed(underlying: Error)
+    case validationError(String)
 }
 
 extension PicoResponsesError: LocalizedError {
@@ -70,6 +71,8 @@ extension PicoResponsesError: LocalizedError {
             return "A network error occurred: \(underlying.localizedDescription)"
         case .streamDecodingFailed(let underlying):
             return "Failed to process the streaming response: \(underlying.localizedDescription)"
+        case .validationError(let message):
+            return "Validation error: \(message)"
         }
     }
 }

@@ -498,6 +498,40 @@ public struct ResponseOutput: Codable, Sendable, Equatable {
     }
 }
 
+// MARK: - ResponseOutput Convenience Initializers (Server-Side Construction)
+
+public extension ResponseOutput {
+    static func message(
+        id: String = "msg_\(UUID().uuidString)",
+        text: String,
+        role: MessageRole = .assistant,
+        status: String = "completed",
+        finishReason: String? = "stop"
+    ) -> ResponseOutput {
+        ResponseOutput(
+            id: id,
+            type: "message",
+            role: role,
+            content: [.outputText(text)],
+            status: status,
+            finishReason: finishReason
+        )
+    }
+    
+    static func inProgress(
+        id: String = "msg_\(UUID().uuidString)",
+        role: MessageRole = .assistant
+    ) -> ResponseOutput {
+        ResponseOutput(
+            id: id,
+            type: "message",
+            role: role,
+            content: [],
+            status: "in_progress"
+        )
+    }
+}
+
 public struct ResponseObject: Codable, Sendable, Equatable {
     public var id: String
     public var object: String
@@ -597,6 +631,83 @@ public struct ResponseObject: Codable, Sendable, Equatable {
         case finishReason = "finish_reason"
         case refusal
         case error
+    }
+}
+
+// MARK: - ResponseObject Convenience Initializers (Server-Side Construction)
+
+public extension ResponseObject {
+    static func completed(
+        id: String = "resp_\(UUID().uuidString)",
+        model: String,
+        output: [ResponseOutput],
+        usage: ResponseUsage? = nil,
+        createdAt: Date = Date(),
+        finishReason: String = "stop"
+    ) -> ResponseObject {
+        ResponseObject(
+            id: id,
+            object: "response",
+            createdAt: createdAt,
+            completedAt: Date(),
+            model: model,
+            status: .completed,
+            usage: usage,
+            output: output,
+            finishReason: finishReason
+        )
+    }
+    
+    static func inProgress(
+        id: String = "resp_\(UUID().uuidString)",
+        model: String,
+        createdAt: Date = Date()
+    ) -> ResponseObject {
+        ResponseObject(
+            id: id,
+            object: "response",
+            createdAt: createdAt,
+            model: model,
+            status: .inProgress,
+            output: []
+        )
+    }
+    
+    static func failed(
+        id: String = "resp_\(UUID().uuidString)",
+        model: String,
+        error: ResponseError,
+        createdAt: Date = Date()
+    ) -> ResponseObject {
+        ResponseObject(
+            id: id,
+            object: "response",
+            createdAt: createdAt,
+            model: model,
+            status: .failed,
+            output: [],
+            error: error
+        )
+    }
+    
+    static func incomplete(
+        id: String = "resp_\(UUID().uuidString)",
+        model: String,
+        output: [ResponseOutput],
+        reason: String,
+        usage: ResponseUsage? = nil,
+        createdAt: Date = Date()
+    ) -> ResponseObject {
+        ResponseObject(
+            id: id,
+            object: "response",
+            createdAt: createdAt,
+            model: model,
+            status: .incomplete,
+            incompleteDetails: ResponseIncompleteDetails(reason: reason),
+            usage: usage,
+            output: output
+        )
     }
 }
 
@@ -742,6 +853,40 @@ public struct ResponseCreateRequest: Codable, Sendable, Equatable {
     }
 }
 
+// MARK: - ResponseCreateRequest Validation
+
+public extension ResponseCreateRequest {
+    func validate() throws {
+        if input.isEmpty {
+            throw PicoResponsesError.validationError("input cannot be empty")
+        }
+        
+        if let temperature, (temperature < 0 || temperature > 2) {
+            throw PicoResponsesError.validationError("temperature must be between 0 and 2")
+        }
+        
+        if let topP, (topP < 0 || topP > 1) {
+            throw PicoResponsesError.validationError("topP must be between 0 and 1")
+        }
+        
+        if let frequencyPenalty, (frequencyPenalty < -2 || frequencyPenalty > 2) {
+            throw PicoResponsesError.validationError("frequencyPenalty must be between -2 and 2")
+        }
+        
+        if let presencePenalty, (presencePenalty < -2 || presencePenalty > 2) {
+            throw PicoResponsesError.validationError("presencePenalty must be between -2 and 2")
+        }
+        
+        if let maxOutputTokens, maxOutputTokens < 1 {
+            throw PicoResponsesError.validationError("maxOutputTokens must be at least 1")
+        }
+        
+        if let maxInputTokens, maxInputTokens < 1 {
+            throw PicoResponsesError.validationError("maxInputTokens must be at least 1")
+        }
+    }
+}
+
 // MARK: - Streaming Events
 
 public struct ResponseDelta: Sendable, Equatable {
@@ -787,36 +932,94 @@ public struct ResponseStreamEvent: Sendable, Equatable {
         self.data = data
     }
 
-    public enum Kind: Sendable, Equatable {
-        case responseCreated
-        case responseInProgress
-        case responseCompleted
-        case responseOutputTextDelta
-        case responseOutputTextDone
-        case responseError
-        case done
-        case other(String)
+    public enum Kind: String, Sendable, Equatable, CaseIterable {
+        // Response lifecycle
+        case responseCreated = "response.created"
+        case responseInProgress = "response.in_progress"
+        case responseCompleted = "response.completed"
+        case responseFailed = "response.failed"
+        case responseIncomplete = "response.incomplete"
+        case responseQueued = "response.queued"
+        
+        // Output items
+        case responseOutputItemAdded = "response.output_item.added"
+        case responseOutputItemDone = "response.output_item.done"
+        
+        // Content parts
+        case responseContentPartAdded = "response.content_part.added"
+        case responseContentPartDone = "response.content_part.done"
+        
+        // Output text
+        case responseOutputTextDelta = "response.output_text.delta"
+        case responseOutputTextDone = "response.output_text.done"
+        case responseOutputTextAnnotationAdded = "response.output_text.annotation.added"
+        
+        // Refusal
+        case responseRefusalDelta = "response.refusal.delta"
+        case responseRefusalDone = "response.refusal.done"
+        
+        // Function calls
+        case responseFunctionCallArgumentsDelta = "response.function_call_arguments.delta"
+        case responseFunctionCallArgumentsDone = "response.function_call_arguments.done"
+        
+        // Reasoning text
+        case responseReasoningTextDelta = "response.reasoning_text.delta"
+        case responseReasoningTextDone = "response.reasoning_text.done"
+        
+        // Reasoning summary
+        case responseReasoningSummaryPartAdded = "response.reasoning_summary_part.added"
+        case responseReasoningSummaryPartDone = "response.reasoning_summary_part.done"
+        case responseReasoningSummaryTextDelta = "response.reasoning_summary_text.delta"
+        case responseReasoningSummaryTextDone = "response.reasoning_summary_text.done"
+        
+        // File search
+        case responseFileSearchCallInProgress = "response.file_search_call.in_progress"
+        case responseFileSearchCallSearching = "response.file_search_call.searching"
+        case responseFileSearchCallCompleted = "response.file_search_call.completed"
+        
+        // Web search
+        case responseWebSearchCallInProgress = "response.web_search_call.in_progress"
+        case responseWebSearchCallSearching = "response.web_search_call.searching"
+        case responseWebSearchCallCompleted = "response.web_search_call.completed"
+        
+        // Code interpreter
+        case responseCodeInterpreterCallInProgress = "response.code_interpreter_call.in_progress"
+        case responseCodeInterpreterCallInterpreting = "response.code_interpreter_call.interpreting"
+        case responseCodeInterpreterCallCompleted = "response.code_interpreter_call.completed"
+        case responseCodeInterpreterCallCodeDelta = "response.code_interpreter_call_code.delta"
+        case responseCodeInterpreterCallCodeDone = "response.code_interpreter_call_code.done"
+        
+        // Image generation
+        case responseImageGenerationCallInProgress = "response.image_generation_call.in_progress"
+        case responseImageGenerationCallGenerating = "response.image_generation_call.generating"
+        case responseImageGenerationCallPartialImage = "response.image_generation_call.partial_image"
+        case responseImageGenerationCallCompleted = "response.image_generation_call.completed"
+        
+        // MCP (Model Context Protocol)
+        case responseMcpCallInProgress = "response.mcp_call.in_progress"
+        case responseMcpCallCompleted = "response.mcp_call.completed"
+        case responseMcpCallFailed = "response.mcp_call.failed"
+        case responseMcpCallArgumentsDelta = "response.mcp_call_arguments.delta"
+        case responseMcpCallArgumentsDone = "response.mcp_call_arguments.done"
+        case responseMcpListToolsInProgress = "response.mcp_list_tools.in_progress"
+        case responseMcpListToolsCompleted = "response.mcp_list_tools.completed"
+        case responseMcpListToolsFailed = "response.mcp_list_tools.failed"
+        
+        // Custom tool calls
+        case responseCustomToolCallInputDelta = "response.custom_tool_call_input.delta"
+        case responseCustomToolCallInputDone = "response.custom_tool_call_input.done"
+        
+        // Error and terminal
+        case error = "error"
+        case done = "done"
     }
 
     public var kind: Kind {
-        switch type {
-        case "response.created":
-            return .responseCreated
-        case "response.in_progress":
-            return .responseInProgress
-        case "response.completed":
-            return .responseCompleted
-        case "response.output_text.delta":
-            return .responseOutputTextDelta
-        case "response.output_text.done":
-            return .responseOutputTextDone
-        case "response.error":
-            return .responseError
-        case "done":
-            return .done
-        default:
-            return .other(type)
-        }
+        Kind(rawValue: type) ?? .error
+    }
+    
+    public var isKnownEventType: Bool {
+        Kind(rawValue: type) != nil
     }
 
     public var status: ResponseStatus? {
@@ -838,13 +1041,18 @@ public struct ResponseStreamEvent: Sendable, Equatable {
         return delta
     }
 
+    public var reasoningTextDelta: ResponseDelta? {
+        guard kind == .responseReasoningTextDelta else { return nil }
+        return delta
+    }
+
     public var error: ResponseError? {
         guard let payload = data["error"]?.dictionaryValue else { return nil }
         return payload.decode(ResponseError.self)
     }
 
     public var streamError: ResponseError? {
-        guard kind == .responseError else { return nil }
+        guard kind == .error else { return nil }
         return error
     }
 
@@ -862,10 +1070,325 @@ public struct ResponseStreamEvent: Sendable, Equatable {
 
     public var isTerminal: Bool {
         switch kind {
-        case .responseCompleted, .responseError, .done:
+        case .responseCompleted, .responseFailed, .responseIncomplete, .error, .done:
             return true
         default:
             return false
         }
+    }
+    
+    public var sequenceNumber: Int? {
+        data["sequence_number"]?.intValue
+    }
+    
+    public var itemId: String? {
+        data["item_id"]?.stringValue
+    }
+    
+    public var outputIndex: Int? {
+        data["output_index"]?.intValue
+    }
+    
+    public var contentIndex: Int? {
+        data["content_index"]?.intValue
+    }
+}
+
+// MARK: - ResponseStreamEvent Factory Methods (Server-Side Construction)
+
+public extension ResponseStreamEvent {
+    
+    init(kind: Kind, data: [String: AnyCodable] = [:]) {
+        self.type = kind.rawValue
+        self.data = data
+    }
+    
+    // MARK: - Response Lifecycle Events
+    
+    static func created(response: ResponseObject, sequenceNumber: Int) -> ResponseStreamEvent {
+        ResponseStreamEvent(
+            kind: .responseCreated,
+            data: [
+                "response": AnyCodable(encodeResponse(response)),
+                "sequence_number": AnyCodable(sequenceNumber)
+            ]
+        )
+    }
+    
+    static func inProgress(response: ResponseObject, sequenceNumber: Int) -> ResponseStreamEvent {
+        ResponseStreamEvent(
+            kind: .responseInProgress,
+            data: [
+                "response": AnyCodable(encodeResponse(response)),
+                "sequence_number": AnyCodable(sequenceNumber)
+            ]
+        )
+    }
+    
+    static func completed(response: ResponseObject, sequenceNumber: Int) -> ResponseStreamEvent {
+        ResponseStreamEvent(
+            kind: .responseCompleted,
+            data: [
+                "response": AnyCodable(encodeResponse(response)),
+                "sequence_number": AnyCodable(sequenceNumber)
+            ]
+        )
+    }
+    
+    static func failed(response: ResponseObject, sequenceNumber: Int) -> ResponseStreamEvent {
+        ResponseStreamEvent(
+            kind: .responseFailed,
+            data: [
+                "response": AnyCodable(encodeResponse(response)),
+                "sequence_number": AnyCodable(sequenceNumber)
+            ]
+        )
+    }
+    
+    static func incomplete(response: ResponseObject, sequenceNumber: Int) -> ResponseStreamEvent {
+        ResponseStreamEvent(
+            kind: .responseIncomplete,
+            data: [
+                "response": AnyCodable(encodeResponse(response)),
+                "sequence_number": AnyCodable(sequenceNumber)
+            ]
+        )
+    }
+    
+    // MARK: - Output Item Events
+    
+    static func outputItemAdded(
+        item: ResponseOutput,
+        outputIndex: Int,
+        sequenceNumber: Int
+    ) -> ResponseStreamEvent {
+        ResponseStreamEvent(
+            kind: .responseOutputItemAdded,
+            data: [
+                "item": AnyCodable(encodeOutput(item)),
+                "output_index": AnyCodable(outputIndex),
+                "sequence_number": AnyCodable(sequenceNumber)
+            ]
+        )
+    }
+    
+    static func outputItemDone(
+        item: ResponseOutput,
+        outputIndex: Int,
+        sequenceNumber: Int
+    ) -> ResponseStreamEvent {
+        ResponseStreamEvent(
+            kind: .responseOutputItemDone,
+            data: [
+                "item": AnyCodable(encodeOutput(item)),
+                "output_index": AnyCodable(outputIndex),
+                "sequence_number": AnyCodable(sequenceNumber)
+            ]
+        )
+    }
+    
+    // MARK: - Content Part Events
+    
+    static func contentPartAdded(
+        itemId: String,
+        outputIndex: Int,
+        contentIndex: Int,
+        part: ResponseContentBlock,
+        sequenceNumber: Int
+    ) -> ResponseStreamEvent {
+        ResponseStreamEvent(
+            kind: .responseContentPartAdded,
+            data: [
+                "item_id": AnyCodable(itemId),
+                "output_index": AnyCodable(outputIndex),
+                "content_index": AnyCodable(contentIndex),
+                "part": AnyCodable(part.data.jsonObject()),
+                "sequence_number": AnyCodable(sequenceNumber)
+            ]
+        )
+    }
+    
+    static func contentPartDone(
+        itemId: String,
+        outputIndex: Int,
+        contentIndex: Int,
+        part: ResponseContentBlock,
+        sequenceNumber: Int
+    ) -> ResponseStreamEvent {
+        ResponseStreamEvent(
+            kind: .responseContentPartDone,
+            data: [
+                "item_id": AnyCodable(itemId),
+                "output_index": AnyCodable(outputIndex),
+                "content_index": AnyCodable(contentIndex),
+                "part": AnyCodable(part.data.jsonObject()),
+                "sequence_number": AnyCodable(sequenceNumber)
+            ]
+        )
+    }
+    
+    // MARK: - Output Text Events
+    
+    static func outputTextDelta(
+        itemId: String,
+        outputIndex: Int,
+        contentIndex: Int,
+        delta: String,
+        sequenceNumber: Int
+    ) -> ResponseStreamEvent {
+        ResponseStreamEvent(
+            kind: .responseOutputTextDelta,
+            data: [
+                "item_id": AnyCodable(itemId),
+                "output_index": AnyCodable(outputIndex),
+                "content_index": AnyCodable(contentIndex),
+                "delta": AnyCodable(delta),
+                "sequence_number": AnyCodable(sequenceNumber)
+            ]
+        )
+    }
+    
+    static func outputTextDone(
+        itemId: String,
+        outputIndex: Int,
+        contentIndex: Int,
+        text: String,
+        sequenceNumber: Int
+    ) -> ResponseStreamEvent {
+        ResponseStreamEvent(
+            kind: .responseOutputTextDone,
+            data: [
+                "item_id": AnyCodable(itemId),
+                "output_index": AnyCodable(outputIndex),
+                "content_index": AnyCodable(contentIndex),
+                "text": AnyCodable(text),
+                "sequence_number": AnyCodable(sequenceNumber)
+            ]
+        )
+    }
+    
+    // MARK: - Reasoning Text Events
+    
+    static func reasoningTextDelta(
+        itemId: String,
+        outputIndex: Int,
+        contentIndex: Int,
+        delta: String,
+        sequenceNumber: Int
+    ) -> ResponseStreamEvent {
+        ResponseStreamEvent(
+            kind: .responseReasoningTextDelta,
+            data: [
+                "item_id": AnyCodable(itemId),
+                "output_index": AnyCodable(outputIndex),
+                "content_index": AnyCodable(contentIndex),
+                "delta": AnyCodable(delta),
+                "sequence_number": AnyCodable(sequenceNumber)
+            ]
+        )
+    }
+    
+    static func reasoningTextDone(
+        itemId: String,
+        outputIndex: Int,
+        contentIndex: Int,
+        text: String,
+        sequenceNumber: Int
+    ) -> ResponseStreamEvent {
+        ResponseStreamEvent(
+            kind: .responseReasoningTextDone,
+            data: [
+                "item_id": AnyCodable(itemId),
+                "output_index": AnyCodable(outputIndex),
+                "content_index": AnyCodable(contentIndex),
+                "text": AnyCodable(text),
+                "sequence_number": AnyCodable(sequenceNumber)
+            ]
+        )
+    }
+    
+    // MARK: - Function Call Events
+    
+    static func functionCallArgumentsDelta(
+        itemId: String,
+        outputIndex: Int,
+        delta: String,
+        sequenceNumber: Int
+    ) -> ResponseStreamEvent {
+        ResponseStreamEvent(
+            kind: .responseFunctionCallArgumentsDelta,
+            data: [
+                "item_id": AnyCodable(itemId),
+                "output_index": AnyCodable(outputIndex),
+                "delta": AnyCodable(delta),
+                "sequence_number": AnyCodable(sequenceNumber)
+            ]
+        )
+    }
+    
+    static func functionCallArgumentsDone(
+        itemId: String,
+        outputIndex: Int,
+        name: String,
+        arguments: String,
+        sequenceNumber: Int
+    ) -> ResponseStreamEvent {
+        ResponseStreamEvent(
+            kind: .responseFunctionCallArgumentsDone,
+            data: [
+                "item_id": AnyCodable(itemId),
+                "output_index": AnyCodable(outputIndex),
+                "name": AnyCodable(name),
+                "arguments": AnyCodable(arguments),
+                "sequence_number": AnyCodable(sequenceNumber)
+            ]
+        )
+    }
+    
+    // MARK: - Error Event
+    
+    static func error(
+        code: String,
+        message: String,
+        param: String? = nil,
+        sequenceNumber: Int
+    ) -> ResponseStreamEvent {
+        var data: [String: AnyCodable] = [
+            "code": AnyCodable(code),
+            "message": AnyCodable(message),
+            "sequence_number": AnyCodable(sequenceNumber)
+        ]
+        if let param {
+            data["param"] = AnyCodable(param)
+        }
+        return ResponseStreamEvent(kind: .error, data: data)
+    }
+    
+    // MARK: - Done Event
+    
+    static func done() -> ResponseStreamEvent {
+        ResponseStreamEvent(kind: .done, data: [:])
+    }
+    
+    // MARK: - Private Helpers
+    
+    private static func encodeResponse(_ response: ResponseObject) -> [String: Any] {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .secondsSince1970
+        guard let data = try? encoder.encode(response),
+              let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return [:]
+        }
+        return dict
+    }
+    
+    private static func encodeOutput(_ output: ResponseOutput) -> [String: Any] {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .secondsSince1970
+        guard let data = try? encoder.encode(output),
+              let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return [:]
+        }
+        return dict
     }
 }

@@ -37,7 +37,7 @@ struct ConversationView: View {
                         Text(message.role.rawValue.capitalized)
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                        PicoMarkdownTextKit2View(text: message.text)
+                        PicoMarkdownView(message.text)
                     }
                     .textSelection(.enabled)
                     .id(message.id)

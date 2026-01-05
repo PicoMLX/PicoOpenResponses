@@ -31,7 +31,7 @@ struct ResponsesExampleApp: App {
             baseURL: server.0
         )
         let client = ResponsesClient(configuration: config)
-        let service = LiveConversationService(client: client, requestBuilder: ConversationRequestBuilder(model: server.2.first ?? "gpt-5-nano"))
+        let service = LiveConversationService(client: client, requestBuilder: ConversationRequestBuilder(model: server.2.first)) // ?? "gpt-5-nano"))
         return ConversationViewModel(service: service)
     }
     
@@ -42,6 +42,6 @@ struct ResponsesExampleApp: App {
             baseURL: server.0
         )
         let client = ResponsesClient(configuration: config)
-        return LiveConversationService(client: client, requestBuilder: ConversationRequestBuilder(model: server.2.first ?? "gpt-5-nano"))
+        return LiveConversationService(client: client, requestBuilder: ConversationRequestBuilder(model: server.2.first)) // ?? "gpt-5-nano"))
     }
 }

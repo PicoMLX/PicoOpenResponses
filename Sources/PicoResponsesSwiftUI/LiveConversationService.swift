@@ -200,15 +200,20 @@ enum ConversationStreamReducer {
                 mutableSnapshot.messages = merge(response: response, into: mutableSnapshot.messages)
                 applyMetadata(from: response, to: &mutableSnapshot)
             }
-        case .responseError:
+        case .responseFailed, .error:
             let message = event.streamError?.message ?? "Unknown error"
             mutableSnapshot.responsePhase = .failed(error: message)
+        case .responseIncomplete:
+            mutableSnapshot.responsePhase = .completed
+            if let response = event.response {
+                mutableSnapshot.messages = merge(response: response, into: mutableSnapshot.messages)
+            }
         case .done:
             if case .streaming = mutableSnapshot.responsePhase {
                 mutableSnapshot.responsePhase = .completed
             }
-        case .other(let type):
-            updateToolStates(type: type, event: event, snapshot: &mutableSnapshot)
+        default:
+            updateToolStates(type: event.type, event: event, snapshot: &mutableSnapshot)
         }
 
         return mutableSnapshot
@@ -264,7 +269,7 @@ enum ConversationStreamReducer {
             snapshot.fileSearchPhase = mapFileSearchPhase(type: type, event: event, current: snapshot.fileSearchPhase)
         } else if type.hasPrefix("response.reasoning") || type.hasPrefix("response.reasoning_") {
             snapshot.reasoningPhase = mapReasoningPhase(type: type, event: event, current: snapshot.reasoningPhase)
-        } else if type.hasPrefix("response.tool_call") || type.hasPrefix("response.code_interpreter_call") {
+        } else if type.hasPrefix("response.tool_call") || type.hasPrefix("response.code_interpreter_call") || type.hasPrefix("response.function_call") || type.hasPrefix("response.mcp_call") {
             snapshot.toolCallPhase = mapToolCallPhase(type: type, event: event, current: snapshot.toolCallPhase)
         } else if type.hasPrefix("response.output_item") {
             updateOutputItemStates(type: type, event: event, snapshot: &snapshot)
@@ -274,9 +279,9 @@ enum ConversationStreamReducer {
     private static func mapWebSearchPhase(type: String, event: ResponseStreamEvent, current: ConversationWebSearchPhase) -> ConversationWebSearchPhase {
         let query = event.data["query"]?.stringValue
         switch type {
-        case "response.web_search_call.created":
+        case "response.web_search_call.in_progress":
             return .initiated(query: query)
-        case "response.web_search_call.delta":
+        case "response.web_search_call.searching":
             return .searching
         case "response.web_search_call.completed":
             return .completed
@@ -289,9 +294,9 @@ enum ConversationStreamReducer {
 
     private static func mapFileSearchPhase(type: String, event: ResponseStreamEvent, current: ConversationFileSearchPhase) -> ConversationFileSearchPhase {
         switch type {
-        case "response.file_search_call.created":
+        case "response.file_search_call.in_progress":
             return .preparing
-        case "response.file_search_call.delta":
+        case "response.file_search_call.searching":
             return .searching
         case "response.file_search_call.completed":
             return .completed
