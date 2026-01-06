@@ -137,6 +137,11 @@ public struct AnyCodable: Codable, @unchecked Sendable, Equatable {
     }
 
     var jsonObject: Any {
+        toJSONValue()
+    }
+    
+    /// Converts the AnyCodable to a JSON-serializable value (public version of jsonObject)
+    public func toJSONValue() -> Any {
         var unwrapped: Any = value
         while let wrapped = unwrapped as? AnyCodable {
             unwrapped = wrapped.value
@@ -144,12 +149,12 @@ public struct AnyCodable: Codable, @unchecked Sendable, Equatable {
         if let dictionary = unwrapped as? [String: Any] {
             var converted: [String: Any] = [:]
             for (key, value) in dictionary {
-                converted[key] = AnyCodable(value).jsonObject
+                converted[key] = AnyCodable(value).toJSONValue()
             }
             return converted
         }
         if let array = unwrapped as? [Any] {
-            return array.map { AnyCodable($0).jsonObject }
+            return array.map { AnyCodable($0).toJSONValue() }
         }
         return unwrapped
     }

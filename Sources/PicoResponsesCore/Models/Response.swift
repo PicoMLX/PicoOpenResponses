@@ -258,13 +258,29 @@ public struct ResponseTruncationStrategy: Codable, Sendable, Equatable {
 
 // MARK: - Content Blocks
 
+public enum ResponseContentType: String, Codable, Sendable {
+    case text
+    case inputText = "input_text"
+    case outputText = "output_text"
+    case refusal
+    case imageUrl = "image_url"
+    case imageFile = "image_file"
+    case inputAudio = "input_audio"
+    case outputAudio = "output_audio"
+    case toolCall = "tool_call"
+    case toolOutput = "tool_output"
+    case reasoning
+    case summaryText = "summary_text"
+    case json
+}
+
 public struct ResponseContentBlock: Codable, Sendable, Equatable {
-    public var type: String
+    public var type: ResponseContentType
     public var data: [String: AnyCodable]
 
-    public init(type: String, data: [String: AnyCodable] = [:]) {
+    public init(type: ResponseContentType, data: [String: AnyCodable] = [:]) {
         var payload = data
-        payload["type"] = AnyCodable(type)
+        payload["type"] = AnyCodable(type.rawValue)
         self.type = type
         self.data = payload
     }
@@ -272,7 +288,8 @@ public struct ResponseContentBlock: Codable, Sendable, Equatable {
     public init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
         let dictionary = try container.decode([String: AnyCodable].self)
-        self.type = dictionary["type"]?.stringValue ?? "unknown"
+        let typeString = dictionary["type"]?.stringValue ?? "text"
+        self.type = ResponseContentType(rawValue: typeString) ?? .text
         self.data = dictionary
     }
 
@@ -290,43 +307,51 @@ public struct ResponseContentBlock: Codable, Sendable, Equatable {
     }
 
     public var toolCall: ResponseToolCall? {
-        guard type == "tool_call" else {
+        guard type == .toolCall else {
             return nil
         }
         return data.decode(ResponseToolCall.self)
     }
 
     public var toolOutput: ResponseToolOutput? {
-        guard type == "tool_output" else {
+        guard type == .toolOutput else {
             return nil
         }
         return data.decode(ResponseToolOutput.self)
     }
 
-    public func decode<T: Decodable>(_ type: T.Type, decoder: JSONDecoder = JSONDecoder()) -> T? {
-        data.decode(type, using: decoder)
+    public func decode<T: Decodable>(_ decodableType: T.Type, decoder: JSONDecoder = JSONDecoder()) -> T? {
+        data.decode(decodableType, using: decoder)
     }
 }
 
 public extension ResponseContentBlock {
     static func text(_ value: String) -> ResponseContentBlock {
-        ResponseContentBlock(type: "text", data: ["text": AnyCodable(value)])
+        ResponseContentBlock(type: .text, data: ["text": AnyCodable(value)])
     }
 
     static func inputText(_ value: String) -> ResponseContentBlock {
-        ResponseContentBlock(type: "input_text", data: ["text": AnyCodable(value)])
+        ResponseContentBlock(type: .inputText, data: ["text": AnyCodable(value)])
     }
 
     static func outputText(_ value: String) -> ResponseContentBlock {
-        ResponseContentBlock(type: "output_text", data: ["text": AnyCodable(value)])
+        ResponseContentBlock(type: .outputText, data: ["text": AnyCodable(value)])
     }
 
     static func imageURL(_ url: URL) -> ResponseContentBlock {
-        ResponseContentBlock(type: "image_url", data: ["image_url": AnyCodable(["url": url.absoluteString])])
+        ResponseContentBlock(type: .imageUrl, data: ["image_url": AnyCodable(["url": url.absoluteString])])
     }
 
     static func json(_ object: [String: Any]) -> ResponseContentBlock {
-        ResponseContentBlock(type: "json", data: ["json": AnyCodable(object)])
+        ResponseContentBlock(type: .json, data: ["json": AnyCodable(object)])
+    }
+    
+    static func reasoning(_ value: String) -> ResponseContentBlock {
+        ResponseContentBlock(type: .reasoning, data: ["text": AnyCodable(value)])
+    }
+    
+    static func refusal(_ value: String) -> ResponseContentBlock {
+        ResponseContentBlock(type: .refusal, data: ["refusal": AnyCodable(value)])
     }
 }
 
@@ -368,7 +393,9 @@ public enum ResponseInputItem: Codable, Sendable, Equatable {
            let contentValues = dictionary["content"]?.arrayValue {
             let blocks: [ResponseContentBlock] = contentValues.compactMap { value in
                 guard let payload = value.dictionaryValue else { return nil }
-                return ResponseContentBlock(type: payload["type"]?.stringValue ?? "unknown", data: payload)
+                let typeString = payload["type"]?.stringValue ?? "text"
+                let contentType = ResponseContentType(rawValue: typeString) ?? .text
+                return ResponseContentBlock(type: contentType, data: payload)
             }
             let metadata = dictionary["metadata"]?.dictionaryValue
             self = .message(ResponseMessageInput(role: role, content: blocks, metadata: metadata))
@@ -404,9 +431,21 @@ public extension ResponseInputItem {
 
 // MARK: - Outputs & Responses
 
+public enum ResponseOutputType: String, Codable, Sendable {
+    case message
+    case reasoning
+    case functionCall = "function_call"
+    case fileSearchCall = "file_search_call"
+    case webSearchCall = "web_search_call"
+    case codeInterpreterCall = "code_interpreter_call"
+    case mcpCall = "mcp_call"
+    case mcpListTools = "mcp_list_tools"
+    case imageGenerationCall = "image_generation_call"
+}
+
 public struct ResponseOutput: Codable, Sendable, Equatable {
     public var id: String
-    public var type: String
+    public var type: ResponseOutputType
     public var role: MessageRole?
     public var content: [ResponseContentBlock]
     public var status: String?
@@ -417,7 +456,7 @@ public struct ResponseOutput: Codable, Sendable, Equatable {
 
     public init(
         id: String,
-        type: String = "message",
+        type: ResponseOutputType = .message,
         role: MessageRole? = nil,
         content: [ResponseContentBlock] = [],
         status: String? = nil,
@@ -448,7 +487,7 @@ public struct ResponseOutput: Codable, Sendable, Equatable {
     ) {
         self.init(
             id: id,
-            type: "message",
+            type: .message,
             role: role,
             content: content,
             status: status,
@@ -474,7 +513,7 @@ public struct ResponseOutput: Codable, Sendable, Equatable {
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.id = try container.decode(String.self, forKey: .id)
-        self.type = try container.decodeIfPresent(String.self, forKey: .type) ?? "message"
+        self.type = try container.decodeIfPresent(ResponseOutputType.self, forKey: .type) ?? .message
         self.role = try container.decodeIfPresent(MessageRole.self, forKey: .role)
         self.content = try container.decodeIfPresent([ResponseContentBlock].self, forKey: .content) ?? []
         self.status = try container.decodeIfPresent(String.self, forKey: .status)
@@ -510,7 +549,7 @@ public extension ResponseOutput {
     ) -> ResponseOutput {
         ResponseOutput(
             id: id,
-            type: "message",
+            type: .message,
             role: role,
             content: [.outputText(text)],
             status: status,
@@ -520,14 +559,29 @@ public extension ResponseOutput {
     
     static func inProgress(
         id: String = "msg_\(UUID().uuidString)",
+        type: ResponseOutputType = .message,
         role: MessageRole = .assistant
     ) -> ResponseOutput {
         ResponseOutput(
             id: id,
-            type: "message",
+            type: type,
             role: role,
             content: [],
             status: "in_progress"
+        )
+    }
+    
+    static func reasoning(
+        id: String = "rsn_\(UUID().uuidString)",
+        text: String,
+        status: String = "completed"
+    ) -> ResponseOutput {
+        ResponseOutput(
+            id: id,
+            type: .reasoning,
+            role: .assistant,
+            content: [.reasoning(text)],
+            status: status
         )
     }
 }
@@ -1368,6 +1422,30 @@ public extension ResponseStreamEvent {
     
     static func done() -> ResponseStreamEvent {
         ResponseStreamEvent(kind: .done, data: [:])
+    }
+    
+    // MARK: - SSE Serialization
+    
+    /// Converts the event to an SSE-formatted string: "data: {json}\n\n"
+    /// Returns nil if serialization fails.
+    public func toSSEString() -> String? {
+        // Build the event data dictionary
+        var eventDict: [String: Any] = ["type": type]
+        for (key, value) in data {
+            eventDict[key] = value.toJSONValue()
+        }
+        
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: eventDict),
+              let jsonString = String(data: jsonData, encoding: .utf8) else {
+            return nil
+        }
+        
+        return "data: \(jsonString)\n\n"
+    }
+    
+    /// Converts the event to SSE data bytes
+    public func toSSEData() -> Data? {
+        toSSEString()?.data(using: .utf8)
     }
     
     // MARK: - Private Helpers
