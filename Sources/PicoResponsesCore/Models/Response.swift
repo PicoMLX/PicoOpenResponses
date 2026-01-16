@@ -1112,8 +1112,7 @@ public struct ResponseStreamEvent: Sendable, Equatable {
 
     public var response: ResponseObject? {
         guard let payload = data["response"]?.dictionaryValue else { return nil }
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .secondsSince1970
+        let decoder = PicoJSONCoding.makeDecoder()
         return payload.decode(ResponseObject.self, using: decoder)
     }
 
@@ -1451,8 +1450,7 @@ public extension ResponseStreamEvent {
     // MARK: - Private Helpers
     
     private static func encodeResponse(_ response: ResponseObject) -> [String: Any] {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .secondsSince1970
+        let encoder = PicoJSONCoding.makeEncoder()
         guard let data = try? encoder.encode(response),
               let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             return [:]
@@ -1461,8 +1459,7 @@ public extension ResponseStreamEvent {
     }
     
     private static func encodeOutput(_ output: ResponseOutput) -> [String: Any] {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .secondsSince1970
+        let encoder = PicoJSONCoding.makeEncoder()
         guard let data = try? encoder.encode(output),
               let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             return [:]

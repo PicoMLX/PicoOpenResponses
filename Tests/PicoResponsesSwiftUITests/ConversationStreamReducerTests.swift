@@ -240,8 +240,7 @@ final class ConversationStreamReducerTests: XCTestCase {
     }
 
     private static func makeAnyCodableDictionary<T: Encodable>(_ value: T) throws -> [String: AnyCodable] {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .secondsSince1970
+        let encoder = PicoJSONCoding.makeEncoder()
         let data = try encoder.encode(value)
         let json = try JSONSerialization.jsonObject(with: data)
         guard let dictionary = json as? [String: Any] else {

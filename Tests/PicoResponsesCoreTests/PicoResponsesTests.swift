@@ -166,8 +166,7 @@ private func parseEvents(_ frames: [String]) async -> [EventSource.Event] {
     """
 
     let data = Data(json.utf8)
-    let decoder = JSONDecoder()
-    decoder.dateDecodingStrategy = .secondsSince1970
+    let decoder = PicoJSONCoding.makeDecoder()
     let response = try decoder.decode(ResponseObject.self, from: data)
 
     #expect(response.createdAt == Date(timeIntervalSince1970: 1))
@@ -262,9 +261,9 @@ private func parseEvents(_ frames: [String]) async -> [EventSource.Event] {
     #expect(call.fileIds == ["file_A"])
     #expect(call.error?.code == "warning")
 
-    let encoded = try JSONEncoder().encode(call)
+    let encoded = try PicoJSONCoding.makeEncoder().encode(call)
     let encodedJSON = try JSONSerialization.jsonObject(with: encoded) as? [String: Any]
-    #expect(encodedJSON? ["started_at"] as? Double == 100.5)
+    #expect(encodedJSON? ["started_at"] as? Int == 100)
     #expect((encodedJSON? ["metadata"] as? [String: Any])? ["attempt"] as? Int == 2)
 }
 
@@ -316,16 +315,14 @@ private func parseEvents(_ frames: [String]) async -> [EventSource.Event] {
     ]
 
     let data = try JSONSerialization.data(withJSONObject: payload)
-    let decoder = JSONDecoder()
-    decoder.dateDecodingStrategy = .secondsSince1970
+    let decoder = PicoJSONCoding.makeDecoder()
     let file = try decoder.decode(FileObject.self, from: data)
 
     #expect(file.status == "uploaded")
     let errorDetails = file.statusDetails? ["error"]?.dictionaryValue
     #expect(errorDetails? ["code"]?.stringValue == "quota_exceeded")
 
-    let encoder = JSONEncoder()
-    encoder.dateEncodingStrategy = .secondsSince1970
+    let encoder = PicoJSONCoding.makeEncoder()
     let encoded = try encoder.encode(file)
     let roundTrip = try JSONSerialization.jsonObject(with: encoded) as? [String: Any]
     let statusDetails = roundTrip? ["status_details"] as? [String: Any]
@@ -349,8 +346,7 @@ private func parseEvents(_ frames: [String]) async -> [EventSource.Event] {
         continuation.finish()
     }
 
-    let decoder = JSONDecoder()
-    decoder.dateDecodingStrategy = .secondsSince1970
+    let decoder = PicoJSONCoding.makeDecoder()
     let parser = ResponseStreamParser(decoder: decoder)
     var results: [ResponseStreamEvent] = []
     for try await event in parser.parse(stream: stream) {

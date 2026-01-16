@@ -673,10 +673,12 @@ public struct ResponseToolCall: Codable, Sendable, Equatable, Identifiable {
         try container.encode(arguments, forKey: .arguments)
         try container.encodeIfPresent(status, forKey: .status)
         if let startedAt {
-            try container.encode(startedAt.timeIntervalSince1970, forKey: .startedAt)
+            let seconds = Int64(startedAt.timeIntervalSince1970)
+            try container.encode(seconds, forKey: .startedAt)
         }
         if let completedAt {
-            try container.encode(completedAt.timeIntervalSince1970, forKey: .completedAt)
+            let seconds = Int64(completedAt.timeIntervalSince1970)
+            try container.encode(seconds, forKey: .completedAt)
         }
         try container.encodeIfPresent(metadata, forKey: .metadata)
         try container.encodeIfPresent(executionContext, forKey: .executionContext)
