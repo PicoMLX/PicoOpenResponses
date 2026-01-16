@@ -7,8 +7,8 @@ public actor ConversationsClient {
 
     public init(configuration: PicoResponsesConfiguration) {
         self.http = HTTPClient(configuration: configuration)
-        self.decoder = PicoJSONCoding.makeDecoder()
-        self.encoder = PicoJSONCoding.makeEncoder()
+        self.decoder = ResponsesJSONCoding.makeDecoder()
+        self.encoder = ResponsesJSONCoding.makeEncoder()
     }
 
     public func list(limit: Int? = nil, order: String? = nil, after: String? = nil, before: String? = nil) async throws -> ConversationList {

@@ -8,8 +8,8 @@ public actor ResponsesClient {
 
     public init(configuration: PicoResponsesConfiguration) {
         self.http = HTTPClient(configuration: configuration)
-        self.decoder = PicoJSONCoding.makeDecoder()
-        self.encoder = PicoJSONCoding.makeEncoder()
+        self.decoder = ResponsesJSONCoding.makeDecoder()
+        self.encoder = ResponsesJSONCoding.makeEncoder()
     }
 
     public func create(

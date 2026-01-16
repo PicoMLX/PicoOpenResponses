@@ -7,8 +7,8 @@ public actor FilesClient {
 
     public init(configuration: PicoResponsesConfiguration) {
         self.http = HTTPClient(configuration: configuration)
-        self.decoder = PicoJSONCoding.makeDecoder()
-        self.encoder = PicoJSONCoding.makeEncoder()
+        self.decoder = ResponsesJSONCoding.makeDecoder()
+        self.encoder = ResponsesJSONCoding.makeEncoder()
     }
 
     public func list(limit: Int? = nil, after: String? = nil, before: String? = nil, purpose: FilePurpose? = nil) async throws -> FileList {
