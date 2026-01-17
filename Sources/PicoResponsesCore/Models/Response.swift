@@ -601,10 +601,20 @@ public struct ResponseObject: Codable, Sendable, Equatable {
     public var modalities: [ResponseModality]?
     public var responseFormat: ResponseFormat?
     public var instructions: String?
+    public var tools: [ResponseTool]
+    public var truncation: ResponseTruncationStrategy
+    public var parallelToolCalls: Bool
+    public var text: [String: AnyCodable]
     public var output: [ResponseOutput]
     public var metadata: [String: AnyCodable]?
-    public var temperature: Float?
-    public var topP: Float?
+    public var temperature: Float
+    public var topP: Float
+    public var frequencyPenalty: Float
+    public var presencePenalty: Float
+    public var topLogprobs: Int
+    public var store: Bool
+    public var background: Bool
+    public var serviceTier: String
     public var conversationId: String?
     public var session: String?
     public var finishReason: String?
@@ -626,10 +636,20 @@ public struct ResponseObject: Codable, Sendable, Equatable {
         modalities: [ResponseModality]? = nil,
         responseFormat: ResponseFormat? = nil,
         instructions: String? = nil,
+        tools: [ResponseTool],
+        truncation: ResponseTruncationStrategy,
+        parallelToolCalls: Bool,
+        text: [String: AnyCodable],
         output: [ResponseOutput] = [],
         metadata: [String: AnyCodable]? = nil,
-        temperature: Float? = nil,
-        topP: Float? = nil,
+        temperature: Float,
+        topP: Float,
+        frequencyPenalty: Float,
+        presencePenalty: Float,
+        topLogprobs: Int,
+        store: Bool,
+        background: Bool,
+        serviceTier: String,
         conversationId: String? = nil,
         session: String? = nil,
         finishReason: String? = nil,
@@ -650,10 +670,20 @@ public struct ResponseObject: Codable, Sendable, Equatable {
         self.modalities = modalities
         self.responseFormat = responseFormat
         self.instructions = instructions
+        self.tools = tools
+        self.truncation = truncation
+        self.parallelToolCalls = parallelToolCalls
+        self.text = text
         self.output = output
         self.metadata = metadata
         self.temperature = temperature
         self.topP = topP
+        self.frequencyPenalty = frequencyPenalty
+        self.presencePenalty = presencePenalty
+        self.topLogprobs = topLogprobs
+        self.store = store
+        self.background = background
+        self.serviceTier = serviceTier
         self.conversationId = conversationId
         self.session = session
         self.finishReason = finishReason
@@ -676,15 +706,78 @@ public struct ResponseObject: Codable, Sendable, Equatable {
         case modalities
         case responseFormat = "response_format"
         case instructions
+        case tools
+        case truncation
+        case parallelToolCalls = "parallel_tool_calls"
+        case text
         case output
         case metadata
         case temperature
         case topP = "top_p"
+        case frequencyPenalty = "frequency_penalty"
+        case presencePenalty = "presence_penalty"
+        case topLogprobs = "top_logprobs"
+        case store
+        case background
+        case serviceTier = "service_tier"
         case conversationId = "conversation_id"
         case session
         case finishReason = "finish_reason"
         case refusal
         case error
+    }
+}
+
+public extension ResponseObject {
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(object, forKey: .object)
+        try container.encode(createdAt, forKey: .createdAt)
+        try container.encodeIfPresent(completedAt, forKey: .completedAt)
+        try container.encodeIfPresent(updatedAt, forKey: .updatedAt)
+        try container.encodeIfPresent(expiresAt, forKey: .expiresAt)
+        try container.encode(model, forKey: .model)
+        try container.encode(status, forKey: .status)
+        try container.encodeIfPresent(statusDetails, forKey: .statusDetails)
+        try container.encodeIfPresent(incompleteDetails, forKey: .incompleteDetails)
+        try container.encodeIfPresent(usage, forKey: .usage)
+        try container.encodeIfPresent(modalities, forKey: .modalities)
+        try container.encodeIfPresent(responseFormat, forKey: .responseFormat)
+        try container.encodeIfPresent(instructions, forKey: .instructions)
+        try encodeRequired(tools, forKey: .tools, in: &container)
+        try encodeRequired(truncation, forKey: .truncation, in: &container)
+        try encodeRequired(parallelToolCalls, forKey: .parallelToolCalls, in: &container)
+        try encodeRequired(text, forKey: .text, in: &container)
+        try container.encode(output, forKey: .output)
+        try container.encodeIfPresent(metadata, forKey: .metadata)
+        try encodeRequired(temperature, forKey: .temperature, in: &container)
+        try encodeRequired(topP, forKey: .topP, in: &container)
+        try encodeRequired(frequencyPenalty, forKey: .frequencyPenalty, in: &container)
+        try encodeRequired(presencePenalty, forKey: .presencePenalty, in: &container)
+        try encodeRequired(topLogprobs, forKey: .topLogprobs, in: &container)
+        try encodeRequired(store, forKey: .store, in: &container)
+        try encodeRequired(background, forKey: .background, in: &container)
+        try encodeRequired(serviceTier, forKey: .serviceTier, in: &container)
+        try container.encodeIfPresent(conversationId, forKey: .conversationId)
+        try container.encodeIfPresent(session, forKey: .session)
+        try container.encodeIfPresent(finishReason, forKey: .finishReason)
+        try container.encodeIfPresent(refusal, forKey: .refusal)
+        try container.encodeIfPresent(error, forKey: .error)
+    }
+}
+
+private extension ResponseObject {
+    func encodeRequired<T: Encodable>(
+        _ value: T?,
+        forKey key: CodingKeys,
+        in container: inout KeyedEncodingContainer<CodingKeys>
+    ) throws {
+        if let value {
+            try container.encode(value, forKey: key)
+        } else {
+            try container.encodeNil(forKey: key)
+        }
     }
 }
 
@@ -694,7 +787,19 @@ public extension ResponseObject {
     static func completed(
         id: String = "resp_\(UUID().uuidString)",
         model: String,
+        tools: [ResponseTool],
+        truncation: ResponseTruncationStrategy,
+        parallelToolCalls: Bool,
+        text: [String: AnyCodable],
         output: [ResponseOutput],
+        temperature: Float,
+        topP: Float,
+        frequencyPenalty: Float,
+        presencePenalty: Float,
+        topLogprobs: Int,
+        store: Bool,
+        background: Bool,
+        serviceTier: String,
         usage: ResponseUsage? = nil,
         createdAt: Date = Date(),
         finishReason: String = "stop"
@@ -707,7 +812,19 @@ public extension ResponseObject {
             model: model,
             status: .completed,
             usage: usage,
+            tools: tools,
+            truncation: truncation,
+            parallelToolCalls: parallelToolCalls,
+            text: text,
             output: output,
+            temperature: temperature,
+            topP: topP,
+            frequencyPenalty: frequencyPenalty,
+            presencePenalty: presencePenalty,
+            topLogprobs: topLogprobs,
+            store: store,
+            background: background,
+            serviceTier: serviceTier,
             finishReason: finishReason
         )
     }
@@ -715,6 +832,18 @@ public extension ResponseObject {
     static func inProgress(
         id: String = "resp_\(UUID().uuidString)",
         model: String,
+        tools: [ResponseTool],
+        truncation: ResponseTruncationStrategy,
+        parallelToolCalls: Bool,
+        text: [String: AnyCodable],
+        temperature: Float,
+        topP: Float,
+        frequencyPenalty: Float,
+        presencePenalty: Float,
+        topLogprobs: Int,
+        store: Bool,
+        background: Bool,
+        serviceTier: String,
         createdAt: Date = Date()
     ) -> ResponseObject {
         ResponseObject(
@@ -723,14 +852,38 @@ public extension ResponseObject {
             createdAt: createdAt,
             model: model,
             status: .inProgress,
-            output: []
+            tools: tools,
+            truncation: truncation,
+            parallelToolCalls: parallelToolCalls,
+            text: text,
+            output: [],
+            temperature: temperature,
+            topP: topP,
+            frequencyPenalty: frequencyPenalty,
+            presencePenalty: presencePenalty,
+            topLogprobs: topLogprobs,
+            store: store,
+            background: background,
+            serviceTier: serviceTier
         )
     }
     
     static func failed(
         id: String = "resp_\(UUID().uuidString)",
         model: String,
+        tools: [ResponseTool],
+        truncation: ResponseTruncationStrategy,
+        parallelToolCalls: Bool,
+        text: [String: AnyCodable],
         error: ResponseError,
+        temperature: Float,
+        topP: Float,
+        frequencyPenalty: Float,
+        presencePenalty: Float,
+        topLogprobs: Int,
+        store: Bool,
+        background: Bool,
+        serviceTier: String,
         createdAt: Date = Date()
     ) -> ResponseObject {
         ResponseObject(
@@ -739,7 +892,19 @@ public extension ResponseObject {
             createdAt: createdAt,
             model: model,
             status: .failed,
+            tools: tools,
+            truncation: truncation,
+            parallelToolCalls: parallelToolCalls,
+            text: text,
             output: [],
+            temperature: temperature,
+            topP: topP,
+            frequencyPenalty: frequencyPenalty,
+            presencePenalty: presencePenalty,
+            topLogprobs: topLogprobs,
+            store: store,
+            background: background,
+            serviceTier: serviceTier,
             error: error
         )
     }
@@ -747,8 +912,20 @@ public extension ResponseObject {
     static func incomplete(
         id: String = "resp_\(UUID().uuidString)",
         model: String,
+        tools: [ResponseTool],
+        truncation: ResponseTruncationStrategy,
+        parallelToolCalls: Bool,
+        text: [String: AnyCodable],
         output: [ResponseOutput],
         reason: String,
+        temperature: Float,
+        topP: Float,
+        frequencyPenalty: Float,
+        presencePenalty: Float,
+        topLogprobs: Int,
+        store: Bool,
+        background: Bool,
+        serviceTier: String,
         usage: ResponseUsage? = nil,
         createdAt: Date = Date()
     ) -> ResponseObject {
@@ -760,7 +937,19 @@ public extension ResponseObject {
             status: .incomplete,
             incompleteDetails: ResponseIncompleteDetails(reason: reason),
             usage: usage,
-            output: output
+            tools: tools,
+            truncation: truncation,
+            parallelToolCalls: parallelToolCalls,
+            text: text,
+            output: output,
+            temperature: temperature,
+            topP: topP,
+            frequencyPenalty: frequencyPenalty,
+            presencePenalty: presencePenalty,
+            topLogprobs: topLogprobs,
+            store: store,
+            background: background,
+            serviceTier: serviceTier
         )
     }
 }
@@ -808,12 +997,17 @@ public struct ResponseCreateRequest: Codable, Sendable, Equatable {
     public var modalities: [ResponseModality]?
     public var responseFormat: ResponseFormat?
     public var audio: ResponseAudioOptions?
+    public var text: [String: AnyCodable]?
     public var metadata: [String: AnyCodable]?
     public var temperature: Float?
     public var topP: Float?
     public var stream: Bool?
     public var frequencyPenalty: Float?
     public var presencePenalty: Float?
+    public var topLogprobs: Int?
+    public var store: Bool?
+    public var background: Bool?
+    public var serviceTier: String?
     public var stop: [String]?
     public var maxOutputTokens: Int?
     public var maxInputTokens: Int?
@@ -834,12 +1028,17 @@ public struct ResponseCreateRequest: Codable, Sendable, Equatable {
         modalities: [ResponseModality]? = nil,
         responseFormat: ResponseFormat? = nil,
         audio: ResponseAudioOptions? = nil,
+        text: [String: AnyCodable]? = nil,
         metadata: [String: AnyCodable]? = nil,
         temperature: Float? = nil,
         topP: Float? = nil,
         stream: Bool? = nil,
         frequencyPenalty: Float? = nil,
         presencePenalty: Float? = nil,
+        topLogprobs: Int? = nil,
+        store: Bool? = nil,
+        background: Bool? = nil,
+        serviceTier: String? = nil,
         stop: [String]? = nil,
         maxOutputTokens: Int? = nil,
         maxInputTokens: Int? = nil,
@@ -859,12 +1058,17 @@ public struct ResponseCreateRequest: Codable, Sendable, Equatable {
         self.modalities = modalities
         self.responseFormat = responseFormat
         self.audio = audio
+        self.text = text
         self.metadata = metadata
         self.temperature = temperature
         self.topP = topP
         self.stream = stream
         self.frequencyPenalty = frequencyPenalty
         self.presencePenalty = presencePenalty
+        self.topLogprobs = topLogprobs
+        self.store = store
+        self.background = background
+        self.serviceTier = serviceTier
         self.stop = stop
         self.maxOutputTokens = maxOutputTokens
         self.maxInputTokens = maxInputTokens
@@ -886,16 +1090,21 @@ public struct ResponseCreateRequest: Codable, Sendable, Equatable {
         case modalities
         case responseFormat = "response_format"
         case audio
+        case text
         case metadata
         case temperature
         case topP = "top_p"
         case stream
         case frequencyPenalty = "frequency_penalty"
         case presencePenalty = "presence_penalty"
+        case topLogprobs = "top_logprobs"
+        case store
+        case background
+        case serviceTier = "service_tier"
         case stop
         case maxOutputTokens = "max_output_tokens"
         case maxInputTokens = "max_input_tokens"
-        case truncationStrategy = "truncate"
+        case truncationStrategy = "truncation"
         case reasoning
         case logitBias = "logit_bias"
         case seed
