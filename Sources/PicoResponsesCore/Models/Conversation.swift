@@ -15,13 +15,6 @@ public struct ConversationObject: Codable, Sendable, Equatable, Identifiable {
         self.metadata = metadata
     }
 
-    enum CodingKeys: String, CodingKey {
-        case id
-        case object
-        case createdAt = "created_at"
-        case updatedAt = "updated_at"
-        case metadata
-    }
 }
 
 public struct ConversationList: Codable, Sendable, Equatable {
@@ -39,13 +32,6 @@ public struct ConversationList: Codable, Sendable, Equatable {
         self.lastId = lastId
     }
 
-    enum CodingKeys: String, CodingKey {
-        case object
-        case data
-        case hasMore = "has_more"
-        case firstId = "first_id"
-        case lastId = "last_id"
-    }
 }
 
 public struct ConversationItemList: Codable, Sendable, Equatable {
@@ -63,13 +49,6 @@ public struct ConversationItemList: Codable, Sendable, Equatable {
         self.lastId = lastId
     }
 
-    enum CodingKeys: String, CodingKey {
-        case object
-        case data
-        case hasMore = "has_more"
-        case firstId = "first_id"
-        case lastId = "last_id"
-    }
 }
 
 public struct ConversationCreateRequest: Codable, Sendable, Equatable {

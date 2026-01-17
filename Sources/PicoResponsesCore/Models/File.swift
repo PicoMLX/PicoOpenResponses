@@ -46,16 +46,6 @@ public struct FileObject: Codable, Sendable, Equatable, Identifiable {
         self.statusDetails = statusDetails
     }
 
-    enum CodingKeys: String, CodingKey {
-        case id
-        case bytes
-        case createdAt = "created_at"
-        case filename
-        case object
-        case purpose
-        case status
-        case statusDetails = "status_details"
-    }
 }
 
 public struct FileList: Codable, Sendable, Equatable {

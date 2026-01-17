@@ -143,40 +143,53 @@ public struct ResponseToolInvocationError: Codable, Sendable, Equatable {
 }
 
 public struct ResponseUsage: Codable, Sendable, Equatable {
-    public var inputTokens: Int?
-    public var outputTokens: Int?
-    public var totalTokens: Int?
-    public var reasoningTokens: Int?
-    public var audioTokens: Int?
-    public var cacheCreationTokens: Int?
-    public var cacheReadTokens: Int?
+    public let inputTokens: Int
+    public let outputTokens: Int
+    public let totalTokens: Int
+    public let inputTokensDetails: InputTokensDetails
+    public let outputTokensDetails: OutputTokenDetails
+//    public let reasoningTokens: Int?
+//    public let audioTokens: Int?
+//    public let cacheCreationTokens: Int?
+//    public let cacheReadTokens: Int?
 
     public init(
-        inputTokens: Int? = nil,
-        outputTokens: Int? = nil,
-        totalTokens: Int? = nil,
-        reasoningTokens: Int? = nil,
-        audioTokens: Int? = nil,
-        cacheCreationTokens: Int? = nil,
-        cacheReadTokens: Int? = nil
+        inputTokens: Int,
+        outputTokens: Int,
+        totalTokens: Int,
+        inputTokensDetails: InputTokensDetails,
+        outputTokensDetails: OutputTokenDetails,
+//        reasoningTokens: Int? = nil,
+//        audioTokens: Int? = nil,
+//        cacheCreationTokens: Int? = nil,
+//        cacheReadTokens: Int? = nil
     ) {
         self.inputTokens = inputTokens
         self.outputTokens = outputTokens
         self.totalTokens = totalTokens
-        self.reasoningTokens = reasoningTokens
-        self.audioTokens = audioTokens
-        self.cacheCreationTokens = cacheCreationTokens
-        self.cacheReadTokens = cacheReadTokens
+        self.inputTokensDetails = inputTokensDetails
+        self.outputTokensDetails = outputTokensDetails
+//        self.reasoningTokens = reasoningTokens
+//        self.audioTokens = audioTokens
+//        self.cacheCreationTokens = cacheCreationTokens
+//        self.cacheReadTokens = cacheReadTokens
     }
 
-    enum CodingKeys: String, CodingKey {
-        case inputTokens = "input_tokens"
-        case outputTokens = "output_tokens"
-        case totalTokens = "total_tokens"
-        case reasoningTokens = "reasoning_tokens"
-        case audioTokens = "audio_tokens"
-        case cacheCreationTokens = "cache_creation_tokens"
-        case cacheReadTokens = "cache_read_tokens"
+}
+
+public struct InputTokensDetails: Codable, Sendable, Equatable {
+    public let cachedTokens: Int
+    
+    public init(cachedTokens: Int) {
+        self.cachedTokens = cachedTokens
+    }
+}
+
+public struct OutputTokenDetails: Codable, Sendable, Equatable {
+    public let reasoningTokens: Int
+    
+    public init(reasoningTokens: Int) {
+        self.reasoningTokens = reasoningTokens
     }
 }
 
@@ -206,11 +219,6 @@ public struct ResponseFormat: Codable, Sendable, Equatable {
         self.strict = strict
     }
 
-    enum CodingKeys: String, CodingKey {
-        case type
-        case jsonSchema = "json_schema"
-        case strict
-    }
 }
 
 public struct ResponseAudioOptions: Codable, Sendable, Equatable {
@@ -234,11 +242,6 @@ public struct ResponseReasoningOptions: Codable, Sendable, Equatable {
         self.maxOutputTokens = maxOutputTokens
     }
 
-    enum CodingKeys: String, CodingKey {
-        case effort
-        case minOutputTokens = "min_output_tokens"
-        case maxOutputTokens = "max_output_tokens"
-    }
 }
 
 public enum ResponseTruncationEnum: String, Codable, Sendable, Equatable {
@@ -254,10 +257,6 @@ public struct ResponseTruncationStrategy: Codable, Sendable, Equatable {
         self.maxInputTokens = maxInputTokens
     }
 
-    enum CodingKeys: String, CodingKey {
-        case type
-        case maxInputTokens = "max_input_tokens"
-    }
 }
 
 // MARK: - Content Blocks
@@ -324,7 +323,7 @@ public struct ResponseContentBlock: Codable, Sendable, Equatable {
         return data.decode(ResponseToolOutput.self)
     }
 
-    public func decode<T: Decodable>(_ decodableType: T.Type, decoder: JSONDecoder = JSONDecoder()) -> T? {
+    public func decode<T: Decodable>(_ decodableType: T.Type, decoder: JSONDecoder = ResponsesJSONCoding.makeDecoder()) -> T? {
         data.decode(decodableType, using: decoder)
     }
 }
@@ -378,11 +377,6 @@ public struct ResponseMessageInput: Codable, Sendable, Equatable {
         self.metadata = metadata
     }
 
-    enum CodingKeys: String, CodingKey {
-        case role
-        case content
-        case metadata
-    }
 }
 
 public enum ResponseInputItem: Codable, Sendable, Equatable {
@@ -1012,14 +1006,6 @@ public struct ResponseList: Codable, Sendable, Equatable {
         self.nextPageToken = nextPageToken
     }
 
-    enum CodingKeys: String, CodingKey {
-        case object
-        case data
-        case hasMore = "has_more"
-        case firstId = "first_id"
-        case lastId = "last_id"
-        case nextPageToken = "next_page_token"
-    }
 }
 
 // MARK: - Request Payload
@@ -1117,37 +1103,6 @@ public struct ResponseCreateRequest: Codable, Sendable, Equatable {
         self.previousResponseId = previousResponseId
     }
 
-    enum CodingKeys: String, CodingKey {
-        case model
-        case input
-        case instructions
-        case modalities
-        case responseFormat = "response_format"
-        case audio
-        case text
-        case metadata
-        case temperature
-        case topP = "top_p"
-        case stream
-        case frequencyPenalty = "frequency_penalty"
-        case presencePenalty = "presence_penalty"
-        case topLogprobs = "top_logprobs"
-        case store
-        case background
-        case serviceTier = "service_tier"
-        case stop
-        case maxOutputTokens = "max_output_tokens"
-        case maxInputTokens = "max_input_tokens"
-        case truncationStrategy = "truncation"
-        case reasoning
-        case logitBias = "logit_bias"
-        case seed
-        case parallelToolCalls = "parallel_tool_calls"
-        case tools
-        case toolChoice = "tool_choice"
-        case session
-        case previousResponseId = "previous_response_id"
-    }
 }
 
 // MARK: - ResponseCreateRequest Validation

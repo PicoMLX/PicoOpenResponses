@@ -196,7 +196,7 @@ extension Dictionary where Key == String, Value == AnyCodable {
         return result
     }
 
-    func decode<T: Decodable>(_ type: T.Type, using decoder: JSONDecoder = JSONDecoder()) -> T? {
+    func decode<T: Decodable>(_ type: T.Type, using decoder: JSONDecoder = ResponsesJSONCoding.makeDecoder()) -> T? {
         guard let data = try? JSONSerialization.data(withJSONObject: jsonObject()) else {
             return nil
         }

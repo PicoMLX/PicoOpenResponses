@@ -47,10 +47,6 @@ public struct WebSearchConfig: Codable, Sendable, Equatable {
         self.searchContextSize = searchContextSize
     }
 
-    enum CodingKeys: String, CodingKey {
-        case userLocation = "user_location"
-        case searchContextSize = "search_context_size"
-    }
 }
 
 public struct FileSearchConfig: Codable, Sendable, Equatable {
@@ -67,10 +63,6 @@ public struct FileSearchConfig: Codable, Sendable, Equatable {
             self.scoreThreshold = scoreThreshold
         }
 
-        enum CodingKeys: String, CodingKey {
-            case ranker
-            case scoreThreshold = "score_threshold"
-        }
     }
 
     public init(
@@ -83,11 +75,6 @@ public struct FileSearchConfig: Codable, Sendable, Equatable {
         self.rankingOptions = rankingOptions
     }
 
-    enum CodingKeys: String, CodingKey {
-        case vectorStoreIds = "vector_store_ids"
-        case maxNumResults = "max_num_results"
-        case rankingOptions = "ranking_options"
-    }
 }
 
 public struct ComputerUseConfig: Codable, Sendable, Equatable {
@@ -101,11 +88,6 @@ public struct ComputerUseConfig: Codable, Sendable, Equatable {
         self.environment = environment
     }
 
-    enum CodingKeys: String, CodingKey {
-        case displayWidth = "display_width"
-        case displayHeight = "display_height"
-        case environment
-    }
 }
 
 public struct CodeInterpreterConfig: Codable, Sendable, Equatable {
@@ -120,10 +102,6 @@ public struct CodeInterpreterConfig: Codable, Sendable, Equatable {
             self.containerId = containerId
         }
 
-        enum CodingKeys: String, CodingKey {
-            case type
-            case containerId = "container_id"
-        }
     }
 
     public init(container: ContainerConfig? = nil) {
@@ -142,11 +120,6 @@ public struct MCPToolConfig: Codable, Sendable, Equatable {
         self.allowedTools = allowedTools
     }
 
-    enum CodingKeys: String, CodingKey {
-        case serverLabel = "server_label"
-        case serverUrl = "server_url"
-        case allowedTools = "allowed_tools"
-    }
 }
 
 // MARK: - ResponseTool Enum
@@ -175,7 +148,7 @@ public enum ResponseTool: Codable, Sendable, Equatable {
         case "web_search":
             if dictionary.count > 1 {
                 let data = try JSONSerialization.data(withJSONObject: dictionary.jsonObject())
-                let config = try JSONDecoder().decode(WebSearchConfig.self, from: data)
+                let config = try ResponsesJSONCoding.makeDecoder().decode(WebSearchConfig.self, from: data)
                 self = .webSearch(config)
             } else {
                 self = .webSearch(nil)
@@ -184,7 +157,7 @@ public enum ResponseTool: Codable, Sendable, Equatable {
         case "file_search":
             if dictionary.count > 1 {
                 let data = try JSONSerialization.data(withJSONObject: dictionary.jsonObject())
-                let config = try JSONDecoder().decode(FileSearchConfig.self, from: data)
+                let config = try ResponsesJSONCoding.makeDecoder().decode(FileSearchConfig.self, from: data)
                 self = .fileSearch(config)
             } else {
                 self = .fileSearch(nil)
@@ -193,7 +166,7 @@ public enum ResponseTool: Codable, Sendable, Equatable {
         case "code_interpreter":
             if dictionary.count > 1 {
                 let data = try JSONSerialization.data(withJSONObject: dictionary.jsonObject())
-                let config = try JSONDecoder().decode(CodeInterpreterConfig.self, from: data)
+                let config = try ResponsesJSONCoding.makeDecoder().decode(CodeInterpreterConfig.self, from: data)
                 self = .codeInterpreter(config)
             } else {
                 self = .codeInterpreter(nil)
@@ -201,17 +174,17 @@ public enum ResponseTool: Codable, Sendable, Equatable {
 
         case "computer_use":
             let data = try JSONSerialization.data(withJSONObject: dictionary.jsonObject())
-            let config = try JSONDecoder().decode(ComputerUseConfig.self, from: data)
+            let config = try ResponsesJSONCoding.makeDecoder().decode(ComputerUseConfig.self, from: data)
             self = .computerUse(config)
 
         case "function":
             let data = try JSONSerialization.data(withJSONObject: dictionary.jsonObject())
-            let definition = try JSONDecoder().decode(ResponseToolDefinition.self, from: data)
+            let definition = try ResponsesJSONCoding.makeDecoder().decode(ResponseToolDefinition.self, from: data)
             self = .function(definition)
 
         case "mcp":
             let data = try JSONSerialization.data(withJSONObject: dictionary.jsonObject())
-            let config = try JSONDecoder().decode(MCPToolConfig.self, from: data)
+            let config = try ResponsesJSONCoding.makeDecoder().decode(MCPToolConfig.self, from: data)
             self = .mcp(config)
 
         default:
@@ -491,11 +464,6 @@ public enum ToolChoice: Codable, Sendable, Equatable {
     case required
     case named(String)
     case other(type: String, payload: [String: AnyCodable])
-
-    enum CodingKeys: String, CodingKey {
-        case type
-        case function
-    }
 
     private struct FunctionPayload: Codable, Sendable, Equatable {
         var name: String
