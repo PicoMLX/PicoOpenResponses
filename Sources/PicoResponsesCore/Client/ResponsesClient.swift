@@ -74,14 +74,15 @@ public actor ResponsesClient {
         if let lastEventID {
             requestHeaders["Last-Event-ID"] = lastEventID
         }
-        var streamingRequest = request
-        streamingRequest.stream = true
+        guard request.stream == true else {
+            throw PicoResponsesError.validationError("stream must be true for streaming requests")
+        }
 
         let httpRequest = HTTPRequest(
             method: .post,
             path: "responses",
             headers: requestHeaders.isEmpty ? nil : requestHeaders,
-            body: streamingRequest
+            body: request
         )
         let eventStream = http.sendStream(httpRequest, encoder: encoder)
         return ResponseStreamParser(decoder: decoder).parse(stream: eventStream)

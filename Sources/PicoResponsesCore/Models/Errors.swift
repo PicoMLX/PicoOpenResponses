@@ -1,11 +1,11 @@
 import Foundation
 
 public struct PicoResponsesAPIError: Codable, Sendable, Equatable {
-    public var message: String?
-    public var type: String?
-    public var param: String?
-    public var code: String?
-    public var raw: [String: AnyCodable]
+    public let message: String?
+    public let type: String?
+    public let param: String?
+    public let code: String?
+    public let raw: [String: AnyCodable]
 
     public init(
         message: String? = nil,

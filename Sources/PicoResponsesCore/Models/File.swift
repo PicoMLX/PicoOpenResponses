@@ -17,14 +17,14 @@ public enum FilePurpose: String, Codable, Sendable {
 }
 
 public struct FileObject: Codable, Sendable, Equatable, Identifiable {
-    public var id: String
-    public var bytes: Int
-    public var createdAt: Date
-    public var filename: String
-    public var object: String
-    public var purpose: FilePurpose
-    public var status: String?
-    public var statusDetails: [String: AnyCodable]?
+    public let id: String
+    public let bytes: Int
+    public let createdAt: Date
+    public let filename: String
+    public let object: String
+    public let purpose: FilePurpose
+    public let status: String?
+    public let statusDetails: [String: AnyCodable]?
 
     public init(
         id: String,
@@ -49,8 +49,8 @@ public struct FileObject: Codable, Sendable, Equatable, Identifiable {
 }
 
 public struct FileList: Codable, Sendable, Equatable {
-    public var object: String
-    public var data: [FileObject]
+    public let object: String
+    public let data: [FileObject]
 
     public init(object: String = "list", data: [FileObject]) {
         self.object = object
@@ -59,10 +59,10 @@ public struct FileList: Codable, Sendable, Equatable {
 }
 
 public struct FileUploadRequest: Sendable, Equatable {
-    public var purpose: FilePurpose
-    public var filename: String
-    public var data: Data
-    public var mimeType: String
+    public let purpose: FilePurpose
+    public let filename: String
+    public let data: Data
+    public let mimeType: String
 
     public init(purpose: FilePurpose, filename: String, data: Data, mimeType: String) {
         self.purpose = purpose

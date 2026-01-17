@@ -10,15 +10,15 @@ import Foundation
 // MARK: - Built-in Tool Configurations
 
 public struct WebSearchConfig: Codable, Sendable, Equatable {
-    public var userLocation: UserLocation?
-    public var searchContextSize: SearchContextSize?
+    public let userLocation: UserLocation?
+    public let searchContextSize: SearchContextSize?
 
     public struct UserLocation: Codable, Sendable, Equatable {
-        public var type: String
-        public var city: String?
-        public var region: String?
-        public var country: String?
-        public var timezone: String?
+        public let type: String
+        public let city: String?
+        public let region: String?
+        public let country: String?
+        public let timezone: String?
 
         public init(
             type: String = "approximate",
@@ -50,13 +50,13 @@ public struct WebSearchConfig: Codable, Sendable, Equatable {
 }
 
 public struct FileSearchConfig: Codable, Sendable, Equatable {
-    public var vectorStoreIds: [String]?
-    public var maxNumResults: Int?
-    public var rankingOptions: RankingOptions?
+    public let vectorStoreIds: [String]?
+    public let maxNumResults: Int?
+    public let rankingOptions: RankingOptions?
 
     public struct RankingOptions: Codable, Sendable, Equatable {
-        public var ranker: String?
-        public var scoreThreshold: Double?
+        public let ranker: String?
+        public let scoreThreshold: Double?
 
         public init(ranker: String? = nil, scoreThreshold: Double? = nil) {
             self.ranker = ranker
@@ -78,9 +78,9 @@ public struct FileSearchConfig: Codable, Sendable, Equatable {
 }
 
 public struct ComputerUseConfig: Codable, Sendable, Equatable {
-    public var displayWidth: Int
-    public var displayHeight: Int
-    public var environment: String?
+    public let displayWidth: Int
+    public let displayHeight: Int
+    public let environment: String?
 
     public init(displayWidth: Int, displayHeight: Int, environment: String? = nil) {
         self.displayWidth = displayWidth
@@ -91,11 +91,11 @@ public struct ComputerUseConfig: Codable, Sendable, Equatable {
 }
 
 public struct CodeInterpreterConfig: Codable, Sendable, Equatable {
-    public var container: ContainerConfig?
+    public let container: ContainerConfig?
 
     public struct ContainerConfig: Codable, Sendable, Equatable {
-        public var type: String?
-        public var containerId: String?
+        public let type: String?
+        public let containerId: String?
 
         public init(type: String? = nil, containerId: String? = nil) {
             self.type = type
@@ -110,9 +110,9 @@ public struct CodeInterpreterConfig: Codable, Sendable, Equatable {
 }
 
 public struct MCPToolConfig: Codable, Sendable, Equatable {
-    public var serverLabel: String
-    public var serverUrl: String?
-    public var allowedTools: [String]?
+    public let serverLabel: String
+    public let serverUrl: String?
+    public let allowedTools: [String]?
 
     public init(serverLabel: String, serverUrl: String? = nil, allowedTools: [String]? = nil) {
         self.serverLabel = serverLabel
@@ -302,13 +302,13 @@ public extension ResponseTool {
 
 public struct ResponseToolDefinition: Codable, Sendable, Equatable {
     public struct MCPServer: Codable, Sendable, Equatable {
-        public var label: String?
-        public var url: URL?
-        public var transport: String?
-        public var version: String?
-        public var auth: [String: AnyCodable]?
-        public var options: [String: AnyCodable]?
-        public var metadata: [String: AnyCodable]?
+        public let label: String?
+        public let url: URL?
+        public let transport: String?
+        public let version: String?
+        public let auth: [String: AnyCodable]?
+        public let options: [String: AnyCodable]?
+        public let metadata: [String: AnyCodable]?
 
         enum CodingKeys: String, CodingKey {
             case label
@@ -367,11 +367,11 @@ public struct ResponseToolDefinition: Codable, Sendable, Equatable {
         }
     }
 
-    public var type: String
-    public var name: String
-    public var description: String?
-    public var inputSchema: JSONSchema
-    public var mcpServer: MCPServer?
+    public let type: String
+    public let name: String
+    public let description: String?
+    public let inputSchema: JSONSchema
+    public let mcpServer: MCPServer?
 
     public init(
         type: String = "function",
@@ -466,7 +466,7 @@ public enum ToolChoice: Codable, Sendable, Equatable {
     case other(type: String, payload: [String: AnyCodable])
 
     private struct FunctionPayload: Codable, Sendable, Equatable {
-        var name: String
+        let name: String
     }
 
     public init(from decoder: Decoder) throws {
@@ -513,8 +513,8 @@ public enum ToolChoice: Codable, Sendable, Equatable {
 
 public struct ResponseToolCall: Codable, Sendable, Equatable, Identifiable {
     public struct Arguments: Codable, Sendable, Equatable {
-        public var string: String?
-        public var json: [String: AnyCodable]?
+        public let string: String?
+        public let json: [String: AnyCodable]?
 
         public init(string: String? = nil, json: [String: AnyCodable]? = nil) {
             self.string = string
@@ -566,17 +566,17 @@ public struct ResponseToolCall: Codable, Sendable, Equatable, Identifiable {
         }
     }
 
-    public var type: String
-    public var id: String
-    public var name: String
-    public var arguments: Arguments
-    public var status: String?
-    public var startedAt: Date?
-    public var completedAt: Date?
-    public var metadata: [String: AnyCodable]?
-    public var executionContext: [String: AnyCodable]?
-    public var fileIds: [String]?
-    public var error: ResponseToolInvocationError?
+    public let type: String
+    public let id: String
+    public let name: String
+    public let arguments: Arguments
+    public let status: String?
+    public let startedAt: Date?
+    public let completedAt: Date?
+    public let metadata: [String: AnyCodable]?
+    public let executionContext: [String: AnyCodable]?
+    public let fileIds: [String]?
+    public let error: ResponseToolInvocationError?
 
     public init(
         type: String = "tool_call",
@@ -769,12 +769,12 @@ public struct ResponseToolOutput: Codable, Sendable, Equatable {
         }
     }
 
-    public var type: String
-    public var toolCallId: String
-    public var payload: Payload
-    public var contentType: String?
-    public var metadata: [String: AnyCodable]?
-    public var error: ResponseToolInvocationError?
+    public let type: String
+    public let toolCallId: String
+    public let payload: Payload
+    public let contentType: String?
+    public let metadata: [String: AnyCodable]?
+    public let error: ResponseToolInvocationError?
 
     public init(
         type: String = "tool_output",

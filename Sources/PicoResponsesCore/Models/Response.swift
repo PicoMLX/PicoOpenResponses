@@ -12,9 +12,9 @@ public enum ResponseStatus: String, Codable, Sendable {
 }
 
 public struct ResponseStatusDetails: Codable, Sendable, Equatable {
-    public var type: String?
-    public var reason: String?
-    public var raw: [String: AnyCodable]
+    public let type: String?
+    public let reason: String?
+    public let raw: [String: AnyCodable]
 
     public init(type: String? = nil, reason: String? = nil, raw: [String: AnyCodable] = [:]) {
         self.type = type
@@ -37,9 +37,9 @@ public struct ResponseStatusDetails: Codable, Sendable, Equatable {
 }
 
 public struct ResponseIncompleteDetails: Codable, Sendable, Equatable {
-    public var reason: String?
-    public var type: String?
-    public var raw: [String: AnyCodable]
+    public let reason: String?
+    public let type: String?
+    public let raw: [String: AnyCodable]
 
     public init(reason: String? = nil, type: String? = nil, raw: [String: AnyCodable] = [:]) {
         self.reason = reason
@@ -62,9 +62,9 @@ public struct ResponseIncompleteDetails: Codable, Sendable, Equatable {
 }
 
 public struct ResponseRefusal: Codable, Sendable, Equatable {
-    public var reason: String?
-    public var message: String?
-    public var raw: [String: AnyCodable]
+    public let reason: String?
+    public let message: String?
+    public let raw: [String: AnyCodable]
 
     public init(reason: String? = nil, message: String? = nil, raw: [String: AnyCodable] = [:]) {
         self.reason = reason
@@ -87,10 +87,10 @@ public struct ResponseRefusal: Codable, Sendable, Equatable {
 }
 
 public struct ResponseError: Codable, Sendable, Equatable {
-    public var code: String?
-    public var message: String?
-    public var param: String?
-    public var raw: [String: AnyCodable]
+    public let code: String?
+    public let message: String?
+    public let param: String?
+    public let raw: [String: AnyCodable]
 
     public init(code: String? = nil, message: String? = nil, param: String? = nil, raw: [String: AnyCodable] = [:]) {
         self.code = code
@@ -115,10 +115,10 @@ public struct ResponseError: Codable, Sendable, Equatable {
 }
 
 public struct ResponseToolInvocationError: Codable, Sendable, Equatable {
-    public var code: String?
-    public var message: String?
-    public var type: String?
-    public var raw: [String: AnyCodable]
+    public let code: String?
+    public let message: String?
+    public let type: String?
+    public let raw: [String: AnyCodable]
 
     public init(code: String? = nil, message: String? = nil, type: String? = nil, raw: [String: AnyCodable] = [:]) {
         self.code = code
@@ -209,9 +209,9 @@ public struct ResponseFormat: Codable, Sendable, Equatable {
         case jsonSchema = "json_schema"
     }
 
-    public var type: FormatType
-    public var jsonSchema: JSONSchema?
-    public var strict: Bool?
+    public let type: FormatType
+    public let jsonSchema: JSONSchema?
+    public let strict: Bool?
 
     public init(type: FormatType = .auto, jsonSchema: JSONSchema? = nil, strict: Bool? = nil) {
         self.type = type
@@ -222,8 +222,8 @@ public struct ResponseFormat: Codable, Sendable, Equatable {
 }
 
 public struct ResponseAudioOptions: Codable, Sendable, Equatable {
-    public var voice: String?
-    public var format: String?
+    public let voice: String?
+    public let format: String?
 
     public init(voice: String? = nil, format: String? = nil) {
         self.voice = voice
@@ -232,9 +232,9 @@ public struct ResponseAudioOptions: Codable, Sendable, Equatable {
 }
 
 public struct ResponseReasoningOptions: Codable, Sendable, Equatable {
-    public var effort: String?
-    public var minOutputTokens: Int?
-    public var maxOutputTokens: Int?
+    public let effort: String?
+    public let minOutputTokens: Int?
+    public let maxOutputTokens: Int?
 
     public init(effort: String? = nil, minOutputTokens: Int? = nil, maxOutputTokens: Int? = nil) {
         self.effort = effort
@@ -249,8 +249,8 @@ public enum ResponseTruncationEnum: String, Codable, Sendable, Equatable {
 }
 
 public struct ResponseTruncationStrategy: Codable, Sendable, Equatable {
-    public var type: String?
-    public var maxInputTokens: Int?
+    public let type: String?
+    public let maxInputTokens: Int?
 
     public init(type: String? = nil, maxInputTokens: Int? = nil) {
         self.type = type
@@ -278,8 +278,8 @@ public enum ResponseContentType: String, Codable, Sendable {
 }
 
 public struct ResponseContentBlock: Codable, Sendable, Equatable {
-    public var type: ResponseContentType
-    public var data: [String: AnyCodable]
+    public let type: ResponseContentType
+    public let data: [String: AnyCodable]
 
     public init(type: ResponseContentType, data: [String: AnyCodable] = [:]) {
         var payload = data
@@ -367,9 +367,9 @@ public enum MessageRole: String, Codable, Sendable {
 }
 
 public struct ResponseMessageInput: Codable, Sendable, Equatable {
-    public var role: MessageRole
-    public var content: [ResponseContentBlock]
-    public var metadata: [String: AnyCodable]?
+    public let role: MessageRole
+    public let content: [ResponseContentBlock]
+    public let metadata: [String: AnyCodable]?
 
     public init(role: MessageRole, content: [ResponseContentBlock], metadata: [String: AnyCodable]? = nil) {
         self.role = role
@@ -442,15 +442,15 @@ public enum ResponseOutputType: String, Codable, Sendable {
 }
 
 public struct ResponseOutput: Codable, Sendable, Equatable {
-    public var id: String
-    public var type: ResponseOutputType
-    public var role: MessageRole?
-    public var content: [ResponseContentBlock]
-    public var status: String?
-    public var metadata: [String: AnyCodable]?
-    public var finishReason: String?
-    public var refusal: ResponseRefusal?
-    public var summary: [AnyCodable]?
+    public let id: String
+    public let type: ResponseOutputType
+    public let role: MessageRole?
+    public let content: [ResponseContentBlock]
+    public let status: String?
+    public let metadata: [String: AnyCodable]?
+    public let finishReason: String?
+    public let refusal: ResponseRefusal?
+    public let summary: [AnyCodable]?
 
     public init(
         id: String,
@@ -585,45 +585,45 @@ public extension ResponseOutput {
 }
 
 public struct ResponseObject: Codable, Sendable, Equatable {
-    public var id: String
-    public var object: String
-    public var createdAt: Date
-    public var completedAt: Date?
-    public var updatedAt: Date?
-    public var expiresAt: Date?
-    public var model: String
-    public var status: ResponseStatus
-    public var statusDetails: ResponseStatusDetails?
-    public var incompleteDetails: ResponseIncompleteDetails?
-    public var usage: ResponseUsage?
-    public var modalities: [ResponseModality]?
-    public var responseFormat: ResponseFormat?
-    public var instructions: String?
-    public var reasoning: ResponseReasoningOptions?
-    public var maxOutputTokens: Int?
-    public var maxToolCalls: Int?
-    public var previousResponseId: String?
-    public var safetyIdentifier: String?
-    public var promptCacheKey: String?
-    public var tools: [ResponseTool]
-    public var truncation: ResponseTruncationEnum
-    public var parallelToolCalls: Bool
-    public var text: [String: AnyCodable]
-    public var output: [ResponseOutput]
-    public var metadata: [String: AnyCodable]?
-    public var temperature: Float
-    public var topP: Float
-    public var frequencyPenalty: Float
-    public var presencePenalty: Float
-    public var topLogprobs: Int
-    public var store: Bool
-    public var background: Bool
-    public var serviceTier: String
-    public var conversationId: String?
-    public var session: String?
-    public var finishReason: String?
-    public var refusal: ResponseRefusal?
-    public var error: ResponseError?
+    public let id: String
+    public let object: String
+    public let createdAt: Date
+    public let completedAt: Date?
+    public let updatedAt: Date?
+    public let expiresAt: Date?
+    public let model: String
+    public let status: ResponseStatus
+    public let statusDetails: ResponseStatusDetails?
+    public let incompleteDetails: ResponseIncompleteDetails?
+    public let usage: ResponseUsage?
+    public let modalities: [ResponseModality]?
+    public let responseFormat: ResponseFormat?
+    public let instructions: String?
+    public let reasoning: ResponseReasoningOptions?
+    public let maxOutputTokens: Int?
+    public let maxToolCalls: Int?
+    public let previousResponseId: String?
+    public let safetyIdentifier: String?
+    public let promptCacheKey: String?
+    public let tools: [ResponseTool]
+    public let truncation: ResponseTruncationEnum
+    public let parallelToolCalls: Bool
+    public let text: [String: AnyCodable]
+    public let output: [ResponseOutput]
+    public let metadata: [String: AnyCodable]?
+    public let temperature: Float
+    public let topP: Float
+    public let frequencyPenalty: Float
+    public let presencePenalty: Float
+    public let topLogprobs: Int
+    public let store: Bool
+    public let background: Bool
+    public let serviceTier: String
+    public let conversationId: String?
+    public let session: String?
+    public let finishReason: String?
+    public let refusal: ResponseRefusal?
+    public let error: ResponseError?
 
     public init(
         id: String,
@@ -983,12 +983,12 @@ public extension ResponseObject {
 }
 
 public struct ResponseList: Codable, Sendable, Equatable {
-    public var object: String
-    public var data: [ResponseObject]
-    public var hasMore: Bool
-    public var firstId: String?
-    public var lastId: String?
-    public var nextPageToken: String?
+    public let object: String
+    public let data: [ResponseObject]
+    public let hasMore: Bool
+    public let firstId: String?
+    public let lastId: String?
+    public let nextPageToken: String?
 
     public init(
         object: String = "list",
@@ -1011,35 +1011,35 @@ public struct ResponseList: Codable, Sendable, Equatable {
 // MARK: - Request Payload
 
 public struct ResponseCreateRequest: Codable, Sendable, Equatable {
-    public var model: String?
-    public var input: [ResponseInputItem]
-    public var instructions: String?
-    public var modalities: [ResponseModality]?
-    public var responseFormat: ResponseFormat?
-    public var audio: ResponseAudioOptions?
-    public var text: [String: AnyCodable]?
-    public var metadata: [String: AnyCodable]?
-    public var temperature: Float?
-    public var topP: Float?
-    public var stream: Bool?
-    public var frequencyPenalty: Float?
-    public var presencePenalty: Float?
-    public var topLogprobs: Int?
-    public var store: Bool?
-    public var background: Bool?
-    public var serviceTier: String?
-    public var stop: [String]?
-    public var maxOutputTokens: Int?
-    public var maxInputTokens: Int?
-    public var truncationStrategy: ResponseTruncationStrategy?
-    public var reasoning: ResponseReasoningOptions?
-    public var logitBias: [String: Float]?
-    public var seed: Int?
-    public var parallelToolCalls: Bool?
-    public var tools: [ResponseTool]?
-    public var toolChoice: ToolChoice?
-    public var session: String?
-    public var previousResponseId: String?
+    public let model: String?
+    public let input: [ResponseInputItem]
+    public let instructions: String?
+    public let modalities: [ResponseModality]?
+    public let responseFormat: ResponseFormat?
+    public let audio: ResponseAudioOptions?
+    public let text: [String: AnyCodable]?
+    public let metadata: [String: AnyCodable]?
+    public let temperature: Float?
+    public let topP: Float?
+    public let stream: Bool?
+    public let frequencyPenalty: Float?
+    public let presencePenalty: Float?
+    public let topLogprobs: Int?
+    public let store: Bool?
+    public let background: Bool?
+    public let serviceTier: String?
+    public let stop: [String]?
+    public let maxOutputTokens: Int?
+    public let maxInputTokens: Int?
+    public let truncationStrategy: ResponseTruncationStrategy?
+    public let reasoning: ResponseReasoningOptions?
+    public let logitBias: [String: Float]?
+    public let seed: Int?
+    public let parallelToolCalls: Bool?
+    public let tools: [ResponseTool]?
+    public let toolChoice: ToolChoice?
+    public let session: String?
+    public let previousResponseId: String?
 
     public init(
         model: String? = nil,

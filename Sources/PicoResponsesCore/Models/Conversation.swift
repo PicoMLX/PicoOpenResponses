@@ -1,11 +1,11 @@
 import Foundation
 
 public struct ConversationObject: Codable, Sendable, Equatable, Identifiable {
-    public var id: String
-    public var object: String
-    public var createdAt: Date
-    public var updatedAt: Date
-    public var metadata: [String: String]?
+    public let id: String
+    public let object: String
+    public let createdAt: Date
+    public let updatedAt: Date
+    public let metadata: [String: String]?
 
     public init(id: String, object: String = "conversation", createdAt: Date, updatedAt: Date, metadata: [String: String]? = nil) {
         self.id = id
@@ -18,11 +18,11 @@ public struct ConversationObject: Codable, Sendable, Equatable, Identifiable {
 }
 
 public struct ConversationList: Codable, Sendable, Equatable {
-    public var object: String
-    public var data: [ConversationObject]
-    public var hasMore: Bool
-    public var firstId: String?
-    public var lastId: String?
+    public let object: String
+    public let data: [ConversationObject]
+    public let hasMore: Bool
+    public let firstId: String?
+    public let lastId: String?
 
     public init(object: String = "list", data: [ConversationObject], hasMore: Bool, firstId: String? = nil, lastId: String? = nil) {
         self.object = object
@@ -35,11 +35,11 @@ public struct ConversationList: Codable, Sendable, Equatable {
 }
 
 public struct ConversationItemList: Codable, Sendable, Equatable {
-    public var object: String
-    public var data: [ResponseOutput]
-    public var hasMore: Bool
-    public var firstId: String?
-    public var lastId: String?
+    public let object: String
+    public let data: [ResponseOutput]
+    public let hasMore: Bool
+    public let firstId: String?
+    public let lastId: String?
 
     public init(object: String = "list", data: [ResponseOutput], hasMore: Bool, firstId: String? = nil, lastId: String? = nil) {
         self.object = object
@@ -52,8 +52,8 @@ public struct ConversationItemList: Codable, Sendable, Equatable {
 }
 
 public struct ConversationCreateRequest: Codable, Sendable, Equatable {
-    public var metadata: [String: String]?
-    public var title: String?
+    public let metadata: [String: String]?
+    public let title: String?
 
     public init(metadata: [String: String]? = nil, title: String? = nil) {
         self.metadata = metadata
@@ -62,8 +62,8 @@ public struct ConversationCreateRequest: Codable, Sendable, Equatable {
 }
 
 public struct ConversationUpdateRequest: Codable, Sendable, Equatable {
-    public var metadata: [String: String]?
-    public var title: String?
+    public let metadata: [String: String]?
+    public let title: String?
     public init(metadata: [String: String]? = nil, title: String? = nil) {
         self.metadata = metadata
         self.title = title
@@ -71,7 +71,7 @@ public struct ConversationUpdateRequest: Codable, Sendable, Equatable {
 }
 
 public struct ConversationDeletion: Codable, Sendable, Equatable {
-    public var id: String
-    public var object: String
-    public var deleted: Bool
+    public let id: String
+    public let object: String
+    public let deleted: Bool
 }
