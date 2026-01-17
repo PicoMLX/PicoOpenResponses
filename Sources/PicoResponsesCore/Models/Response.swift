@@ -241,6 +241,10 @@ public struct ResponseReasoningOptions: Codable, Sendable, Equatable {
     }
 }
 
+public enum ResponseTruncationEnum: String, Codable, Sendable, Equatable {
+    case auto, disabled
+}
+
 public struct ResponseTruncationStrategy: Codable, Sendable, Equatable {
     public var type: String?
     public var maxInputTokens: Int?
@@ -602,7 +606,7 @@ public struct ResponseObject: Codable, Sendable, Equatable {
     public var responseFormat: ResponseFormat?
     public var instructions: String?
     public var tools: [ResponseTool]
-    public var truncation: ResponseTruncationStrategy
+    public var truncation: ResponseTruncationEnum
     public var parallelToolCalls: Bool
     public var text: [String: AnyCodable]
     public var output: [ResponseOutput]
@@ -637,7 +641,7 @@ public struct ResponseObject: Codable, Sendable, Equatable {
         responseFormat: ResponseFormat? = nil,
         instructions: String? = nil,
         tools: [ResponseTool],
-        truncation: ResponseTruncationStrategy,
+        truncation: ResponseTruncationEnum,
         parallelToolCalls: Bool,
         text: [String: AnyCodable],
         output: [ResponseOutput] = [],
@@ -788,7 +792,7 @@ public extension ResponseObject {
         id: String = "resp_\(UUID().uuidString)",
         model: String,
         tools: [ResponseTool],
-        truncation: ResponseTruncationStrategy,
+        truncation: ResponseTruncationEnum,
         parallelToolCalls: Bool,
         text: [String: AnyCodable],
         output: [ResponseOutput],
@@ -833,7 +837,7 @@ public extension ResponseObject {
         id: String = "resp_\(UUID().uuidString)",
         model: String,
         tools: [ResponseTool],
-        truncation: ResponseTruncationStrategy,
+        truncation: ResponseTruncationEnum,
         parallelToolCalls: Bool,
         text: [String: AnyCodable],
         temperature: Float,
@@ -872,7 +876,7 @@ public extension ResponseObject {
         id: String = "resp_\(UUID().uuidString)",
         model: String,
         tools: [ResponseTool],
-        truncation: ResponseTruncationStrategy,
+        truncation: ResponseTruncationEnum,
         parallelToolCalls: Bool,
         text: [String: AnyCodable],
         error: ResponseError,
@@ -913,7 +917,7 @@ public extension ResponseObject {
         id: String = "resp_\(UUID().uuidString)",
         model: String,
         tools: [ResponseTool],
-        truncation: ResponseTruncationStrategy,
+        truncation: ResponseTruncationEnum,
         parallelToolCalls: Bool,
         text: [String: AnyCodable],
         output: [ResponseOutput],
