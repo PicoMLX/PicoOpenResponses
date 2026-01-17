@@ -23,3 +23,10 @@ public enum ResponsesJSONCoding {
         return decoder
     }
 }
+
+extension KeyedEncodingContainer {
+    mutating func encodeOrNull<T: Encodable>(_ value: T?, forKey key: Key) throws {
+        if let value { try encode(value, forKey: key) }
+        else { try encodeNil(forKey: key) }
+    }
+}

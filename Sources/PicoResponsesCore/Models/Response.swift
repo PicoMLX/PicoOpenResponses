@@ -605,6 +605,12 @@ public struct ResponseObject: Codable, Sendable, Equatable {
     public var modalities: [ResponseModality]?
     public var responseFormat: ResponseFormat?
     public var instructions: String?
+    public var reasoning: ResponseReasoningOptions?
+    public var maxOutputTokens: Int?
+    public var maxToolCalls: Int?
+    public var previousResponseId: String?
+    public var safetyIdentifier: String?
+    public var promptCacheKey: String?
     public var tools: [ResponseTool]
     public var truncation: ResponseTruncationEnum
     public var parallelToolCalls: Bool
@@ -640,6 +646,12 @@ public struct ResponseObject: Codable, Sendable, Equatable {
         modalities: [ResponseModality]? = nil,
         responseFormat: ResponseFormat? = nil,
         instructions: String? = nil,
+        reasoning: ResponseReasoningOptions? = nil,
+        maxOutputTokens: Int? = nil,
+        maxToolCalls: Int? = nil,
+        previousResponseId: String? = nil,
+        safetyIdentifier: String? = nil,
+        promptCacheKey: String? = nil,
         tools: [ResponseTool],
         truncation: ResponseTruncationEnum,
         parallelToolCalls: Bool,
@@ -674,6 +686,12 @@ public struct ResponseObject: Codable, Sendable, Equatable {
         self.modalities = modalities
         self.responseFormat = responseFormat
         self.instructions = instructions
+        self.reasoning = reasoning
+        self.maxOutputTokens = maxOutputTokens
+        self.maxToolCalls = maxToolCalls
+        self.previousResponseId = previousResponseId
+        self.safetyIdentifier = safetyIdentifier
+        self.promptCacheKey = promptCacheKey
         self.tools = tools
         self.truncation = truncation
         self.parallelToolCalls = parallelToolCalls
@@ -710,6 +728,12 @@ public struct ResponseObject: Codable, Sendable, Equatable {
         case modalities
         case responseFormat = "response_format"
         case instructions
+        case reasoning
+        case maxOutputTokens = "max_output_tokens"
+        case maxToolCalls = "max_tool_calls"
+        case previousResponseId = "previous_response_id"
+        case safetyIdentifier = "safety_identifier"
+        case promptCacheKey = "prompt_cache_key"
         case tools
         case truncation
         case parallelToolCalls = "parallel_tool_calls"
@@ -744,11 +768,17 @@ public extension ResponseObject {
         try container.encode(model, forKey: .model)
         try container.encode(status, forKey: .status)
         try container.encodeIfPresent(statusDetails, forKey: .statusDetails)
-        try container.encodeIfPresent(incompleteDetails, forKey: .incompleteDetails)
+        try container.encodeOrNull(incompleteDetails, forKey: .incompleteDetails)
         try container.encodeIfPresent(usage, forKey: .usage)
         try container.encodeIfPresent(modalities, forKey: .modalities)
         try container.encodeIfPresent(responseFormat, forKey: .responseFormat)
-        try container.encodeIfPresent(instructions, forKey: .instructions)
+        try container.encodeOrNull(instructions, forKey: .instructions)
+        try container.encodeOrNull(reasoning, forKey: .reasoning)
+        try container.encodeOrNull(maxOutputTokens, forKey: .maxOutputTokens)
+        try container.encodeOrNull(maxToolCalls, forKey: .maxToolCalls)
+        try container.encodeOrNull(previousResponseId, forKey: .previousResponseId)
+        try container.encodeOrNull(safetyIdentifier, forKey: .safetyIdentifier)
+        try container.encodeOrNull(promptCacheKey, forKey: .promptCacheKey)
         try encodeRequired(tools, forKey: .tools, in: &container)
         try encodeRequired(truncation, forKey: .truncation, in: &container)
         try encodeRequired(parallelToolCalls, forKey: .parallelToolCalls, in: &container)
@@ -767,7 +797,7 @@ public extension ResponseObject {
         try container.encodeIfPresent(session, forKey: .session)
         try container.encodeIfPresent(finishReason, forKey: .finishReason)
         try container.encodeIfPresent(refusal, forKey: .refusal)
-        try container.encodeIfPresent(error, forKey: .error)
+        try container.encodeOrNull(error, forKey: .error)
     }
 }
 
