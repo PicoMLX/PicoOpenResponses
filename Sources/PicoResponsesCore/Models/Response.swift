@@ -148,10 +148,6 @@ public struct ResponseUsage: Codable, Sendable, Equatable {
     public let totalTokens: Int
     public let inputTokensDetails: InputTokensDetails
     public let outputTokensDetails: OutputTokenDetails
-//    public let reasoningTokens: Int?
-//    public let audioTokens: Int?
-//    public let cacheCreationTokens: Int?
-//    public let cacheReadTokens: Int?
 
     public init(
         inputTokens: Int,
@@ -159,20 +155,12 @@ public struct ResponseUsage: Codable, Sendable, Equatable {
         totalTokens: Int,
         inputTokensDetails: InputTokensDetails,
         outputTokensDetails: OutputTokenDetails,
-//        reasoningTokens: Int? = nil,
-//        audioTokens: Int? = nil,
-//        cacheCreationTokens: Int? = nil,
-//        cacheReadTokens: Int? = nil
     ) {
         self.inputTokens = inputTokens
         self.outputTokens = outputTokens
         self.totalTokens = totalTokens
         self.inputTokensDetails = inputTokensDetails
         self.outputTokensDetails = outputTokensDetails
-//        self.reasoningTokens = reasoningTokens
-//        self.audioTokens = audioTokens
-//        self.cacheCreationTokens = cacheCreationTokens
-//        self.cacheReadTokens = cacheReadTokens
     }
 
 }
