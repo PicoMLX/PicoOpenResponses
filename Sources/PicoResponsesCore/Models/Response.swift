@@ -181,44 +181,202 @@ public struct OutputTokenDetails: Codable, Sendable, Equatable {
     }
 }
 
-// MARK: - Response Options
 
-public enum TextVerbosity: String, Codable, Sendable, Equatable {
+// MARK: - OpenResponses Text Output Configuration
+
+public enum VerbosityEnum: String, Codable, Sendable, Equatable {
     case low
     case medium
     case high
 }
 
-/// `TextResponseFormat` as defined by Open Responses. This is the minimum required shape
-/// for `text.format` when using plain text output.
 public struct TextResponseFormat: Codable, Sendable, Equatable {
     public let type: String
 
-    public init(type: String = "text") {
-        self.type = type
+    public init() {
+        self.type = "text"
     }
 }
 
-/// Request-side `text` configuration (TextParam in the spec).
-/// The acceptance tests require `format` to be present when `text` is provided.
-public struct ResponseTextParam: Codable, Sendable, Equatable {
-    public let format: TextResponseFormat
-    public let verbosity: TextVerbosity?
+public struct JsonObjectResponseFormat: Codable, Sendable, Equatable {
+    public let type: String
 
-    public init(format: TextResponseFormat = TextResponseFormat(), verbosity: TextVerbosity? = nil) {
-        self.format = format
-        self.verbosity = verbosity
+    public init() {
+        self.type = "json_object"
     }
 }
 
-/// Response-side `text` configuration (TextField in the spec). `format` is required.
-public struct ResponseTextField: Codable, Sendable, Equatable {
-    public let format: TextResponseFormat
-    public let verbosity: TextVerbosity?
+public struct JsonSchemaResponseFormat: Codable, Sendable, Equatable {
+    public let type: String
+    public let name: String
+    public let description: String
+    public let schema: AnyCodable
+    public let strict: Bool
 
-    public init(format: TextResponseFormat = TextResponseFormat(), verbosity: TextVerbosity? = nil) {
+    public init(name: String, description: String, schema: AnyCodable, strict: Bool) {
+        self.type = "json_schema"
+        self.name = name
+        self.description = description
+        self.schema = schema
+        self.strict = strict
+    }
+}
+
+public struct JsonSchemaResponseFormatParam: Codable, Sendable, Equatable {
+    public let type: String
+    public let description: String?
+    public let name: String?
+    public let schema: AnyCodable?
+    public let strict: Bool?
+
+    public init(description: String? = nil, name: String? = nil, schema: AnyCodable? = nil, strict: Bool? = nil) {
+        self.type = "json_schema"
+        self.description = description
+        self.name = name
+        self.schema = schema
+        self.strict = strict
+    }
+}
+
+/// Request-side union: JsonSchemaResponseFormatParam | TextResponseFormat
+public enum TextFormatParam: Codable, Sendable, Equatable {
+    case text(TextResponseFormat)
+    case jsonSchema(JsonSchemaResponseFormatParam)
+
+    private enum CodingKeys: String, CodingKey { case type }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let type = try container.decode(String.self, forKey: .type)
+        switch type {
+        case "text":
+            self = .text(try TextResponseFormat(from: decoder))
+        case "json_schema":
+            self = .jsonSchema(try JsonSchemaResponseFormatParam(from: decoder))
+        default:
+            // Be permissive: unknown types fall back to text.
+            self = .text(TextResponseFormat())
+        }
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        switch self {
+        case .text(let value):
+            try value.encode(to: encoder)
+        case .jsonSchema(let value):
+            try value.encode(to: encoder)
+        }
+    }
+}
+
+/// Response-side union: TextResponseFormat | JsonObjectResponseFormat | JsonSchemaResponseFormat
+public enum TextFormatField: Codable, Sendable, Equatable {
+    case text(TextResponseFormat)
+    case jsonObject(JsonObjectResponseFormat)
+    case jsonSchema(JsonSchemaResponseFormat)
+
+    private enum CodingKeys: String, CodingKey { case type }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let type = try container.decode(String.self, forKey: .type)
+        switch type {
+        case "text":
+            self = .text(try TextResponseFormat(from: decoder))
+        case "json_object":
+            self = .jsonObject(try JsonObjectResponseFormat(from: decoder))
+        case "json_schema":
+            self = .jsonSchema(try JsonSchemaResponseFormat(from: decoder))
+        default:
+            // Be permissive: unknown types fall back to text.
+            self = .text(TextResponseFormat())
+        }
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        switch self {
+        case .text(let value):
+            try value.encode(to: encoder)
+        case .jsonObject(let value):
+            try value.encode(to: encoder)
+        case .jsonSchema(let value):
+            try value.encode(to: encoder)
+        }
+    }
+}
+
+/// Request-side text configuration.
+public struct TextParam: Codable, Sendable, Equatable {
+    public let format: TextFormatParam?
+    public let verbosity: VerbosityEnum?
+
+    public init(format: TextFormatParam? = nil, verbosity: VerbosityEnum? = nil) {
         self.format = format
         self.verbosity = verbosity
+    }
+
+    /// Best-effort conversion from legacy `[String: AnyCodable]`.
+    public static func fromLegacy(_ legacy: [String: AnyCodable]) -> TextParam {
+        let verbosity = legacy["verbosity"]?.stringValue.flatMap(VerbosityEnum.init(rawValue:))
+
+        var format: TextFormatParam? = nil
+        if let fmt = legacy["format"]?.dictionaryValue,
+           let type = fmt["type"]?.stringValue {
+            if type == "json_schema" {
+                // Parse schema format if present; otherwise keep an empty param object.
+                let description = fmt["description"]?.stringValue
+                let name = fmt["name"]?.stringValue
+                let schema = fmt["schema"]
+                let strict = fmt["strict"]?.boolValue
+                format = .jsonSchema(JsonSchemaResponseFormatParam(description: description, name: name, schema: schema, strict: strict))
+            } else {
+                format = .text(TextResponseFormat())
+            }
+        }
+
+        return TextParam(format: format, verbosity: verbosity)
+    }
+}
+
+/// Response-side text configuration.
+public struct TextField: Codable, Sendable, Equatable {
+    public let format: TextFormatField
+    public let verbosity: VerbosityEnum
+
+    public init(format: TextFormatField = .text(TextResponseFormat()), verbosity: VerbosityEnum = .medium) {
+        self.format = format
+        self.verbosity = verbosity
+    }
+
+    public static var `default`: TextField {
+        TextField(format: .text(TextResponseFormat()), verbosity: .medium)
+    }
+
+    /// Best-effort conversion from legacy `[String: AnyCodable]`.
+    public static func fromLegacy(_ legacy: [String: AnyCodable]) -> TextField {
+        let verbosity = legacy["verbosity"]?.stringValue.flatMap(VerbosityEnum.init(rawValue:)) ?? .medium
+
+        if let fmt = legacy["format"]?.dictionaryValue,
+           let type = fmt["type"]?.stringValue {
+            switch type {
+            case "json_object":
+                return TextField(format: .jsonObject(JsonObjectResponseFormat()), verbosity: verbosity)
+            case "json_schema":
+                // Response-side json_schema requires name/description/schema/strict; fall back to text if missing.
+                if let name = fmt["name"]?.stringValue,
+                   let description = fmt["description"]?.stringValue,
+                   let schema = fmt["schema"],
+                   let strict = fmt["strict"]?.boolValue {
+                    return TextField(format: .jsonSchema(JsonSchemaResponseFormat(name: name, description: description, schema: schema, strict: strict)), verbosity: verbosity)
+                }
+                return TextField(format: .text(TextResponseFormat()), verbosity: verbosity)
+            default:
+                return TextField(format: .text(TextResponseFormat()), verbosity: verbosity)
+            }
+        }
+
+        // Legacy empty object => compliant default (includes format + verbosity).
+        return TextField.default
     }
 }
 
@@ -649,7 +807,7 @@ public struct ResponseObject: Codable, Sendable, Equatable {
     public let tools: [ResponseTool]
     public let truncation: ResponseTruncationEnum
     public let parallelToolCalls: Bool
-    public let text: ResponseTextField
+    public let text: TextField
     public let output: [ResponseOutput]
     public let metadata: [String: AnyCodable]?
     public let temperature: Float
@@ -690,7 +848,7 @@ public struct ResponseObject: Codable, Sendable, Equatable {
         tools: [ResponseTool],
         truncation: ResponseTruncationEnum,
         parallelToolCalls: Bool,
-        text: ResponseTextField,
+        text: TextField,
         output: [ResponseOutput] = [],
         metadata: [String: AnyCodable]? = nil,
         temperature: Float,
@@ -746,6 +904,90 @@ public struct ResponseObject: Codable, Sendable, Equatable {
         self.finishReason = finishReason
         self.refusal = refusal
         self.error = error
+    }
+
+    public init(
+        id: String,
+        object: String = "response",
+        createdAt: Date,
+        completedAt: Date? = nil,
+        updatedAt: Date? = nil,
+        expiresAt: Date? = nil,
+        model: String,
+        status: ResponseStatus,
+        statusDetails: ResponseStatusDetails? = nil,
+        incompleteDetails: ResponseIncompleteDetails? = nil,
+        usage: ResponseUsage? = nil,
+        modalities: [ResponseModality]? = nil,
+        responseFormat: ResponseFormat? = nil,
+        instructions: String? = nil,
+        reasoning: ResponseReasoningOptions? = nil,
+        maxOutputTokens: Int? = nil,
+        maxToolCalls: Int? = nil,
+        previousResponseId: String? = nil,
+        safetyIdentifier: String? = nil,
+        promptCacheKey: String? = nil,
+        tools: [ResponseTool],
+        truncation: ResponseTruncationEnum,
+        parallelToolCalls: Bool,
+        text: [String: AnyCodable],
+        output: [ResponseOutput] = [],
+        metadata: [String: AnyCodable]? = nil,
+        temperature: Float,
+        topP: Float,
+        frequencyPenalty: Float,
+        presencePenalty: Float,
+        topLogprobs: Int,
+        store: Bool,
+        background: Bool,
+        serviceTier: String,
+        conversationId: String? = nil,
+        session: String? = nil,
+        finishReason: String? = nil,
+        refusal: ResponseRefusal? = nil,
+        error: ResponseError? = nil
+    ) {
+        self.init(
+            id: id,
+            object: object,
+            createdAt: createdAt,
+            completedAt: completedAt,
+            updatedAt: updatedAt,
+            expiresAt: expiresAt,
+            model: model,
+            status: status,
+            statusDetails: statusDetails,
+            incompleteDetails: incompleteDetails,
+            usage: usage,
+            modalities: modalities,
+            responseFormat: responseFormat,
+            instructions: instructions,
+            reasoning: reasoning,
+            maxOutputTokens: maxOutputTokens,
+            maxToolCalls: maxToolCalls,
+            previousResponseId: previousResponseId,
+            safetyIdentifier: safetyIdentifier,
+            promptCacheKey: promptCacheKey,
+            tools: tools,
+            truncation: truncation,
+            parallelToolCalls: parallelToolCalls,
+            text: TextField.fromLegacy(text),
+            output: output,
+            metadata: metadata,
+            temperature: temperature,
+            topP: topP,
+            frequencyPenalty: frequencyPenalty,
+            presencePenalty: presencePenalty,
+            topLogprobs: topLogprobs,
+            store: store,
+            background: background,
+            serviceTier: serviceTier,
+            conversationId: conversationId,
+            session: session,
+            finishReason: finishReason,
+            refusal: refusal,
+            error: error
+        )
     }
 
     enum CodingKeys: String, CodingKey {
@@ -817,7 +1059,7 @@ public extension ResponseObject {
         try encodeRequired(tools, forKey: .tools, in: &container)
         try encodeRequired(truncation, forKey: .truncation, in: &container)
         try encodeRequired(parallelToolCalls, forKey: .parallelToolCalls, in: &container)
-        try container.encode(text, forKey: .text)
+        try encodeRequired(text, forKey: .text, in: &container)
         try container.encode(output, forKey: .output)
         try container.encodeIfPresent(metadata, forKey: .metadata)
         try encodeRequired(temperature, forKey: .temperature, in: &container)
@@ -859,7 +1101,7 @@ public extension ResponseObject {
         tools: [ResponseTool],
         truncation: ResponseTruncationEnum,
         parallelToolCalls: Bool,
-        text: ResponseTextField = ResponseTextField(),
+        text: TextField = .default,
         output: [ResponseOutput],
         temperature: Float,
         topP: Float,
@@ -897,14 +1139,56 @@ public extension ResponseObject {
             finishReason: finishReason
         )
     }
-    
+
+    static func completed(
+        id: String = "resp_\(UUID().uuidString)",
+        model: String,
+        tools: [ResponseTool],
+        truncation: ResponseTruncationEnum,
+        parallelToolCalls: Bool,
+        text: [String: AnyCodable],
+        output: [ResponseOutput],
+        temperature: Float,
+        topP: Float,
+        frequencyPenalty: Float,
+        presencePenalty: Float,
+        topLogprobs: Int,
+        store: Bool,
+        background: Bool,
+        serviceTier: String,
+        usage: ResponseUsage? = nil,
+        createdAt: Date = Date(),
+        finishReason: String = "stop"
+    ) -> ResponseObject {
+        ResponseObject.completed(
+            id: id,
+            model: model,
+            tools: tools,
+            truncation: truncation,
+            parallelToolCalls: parallelToolCalls,
+            text: TextField.fromLegacy(text),
+            output: output,
+            temperature: temperature,
+            topP: topP,
+            frequencyPenalty: frequencyPenalty,
+            presencePenalty: presencePenalty,
+            topLogprobs: topLogprobs,
+            store: store,
+            background: background,
+            serviceTier: serviceTier,
+            usage: usage,
+            createdAt: createdAt,
+            finishReason: finishReason
+        )
+    }
+
     static func inProgress(
         id: String = "resp_\(UUID().uuidString)",
         model: String,
         tools: [ResponseTool],
         truncation: ResponseTruncationEnum,
         parallelToolCalls: Bool,
-        text: ResponseTextField = ResponseTextField(),
+        text: TextField = .default,
         temperature: Float,
         topP: Float,
         frequencyPenalty: Float,
@@ -936,14 +1220,50 @@ public extension ResponseObject {
             serviceTier: serviceTier
         )
     }
-    
+
+    static func inProgress(
+        id: String = "resp_\(UUID().uuidString)",
+        model: String,
+        tools: [ResponseTool],
+        truncation: ResponseTruncationEnum,
+        parallelToolCalls: Bool,
+        text: [String: AnyCodable],
+        temperature: Float,
+        topP: Float,
+        frequencyPenalty: Float,
+        presencePenalty: Float,
+        topLogprobs: Int,
+        store: Bool,
+        background: Bool,
+        serviceTier: String,
+        createdAt: Date = Date()
+    ) -> ResponseObject {
+        ResponseObject.inProgress(
+            id: id,
+            model: model,
+            tools: tools,
+            truncation: truncation,
+            parallelToolCalls: parallelToolCalls,
+            text: TextField.fromLegacy(text),
+            temperature: temperature,
+            topP: topP,
+            frequencyPenalty: frequencyPenalty,
+            presencePenalty: presencePenalty,
+            topLogprobs: topLogprobs,
+            store: store,
+            background: background,
+            serviceTier: serviceTier,
+            createdAt: createdAt
+        )
+    }
+
     static func failed(
         id: String = "resp_\(UUID().uuidString)",
         model: String,
         tools: [ResponseTool],
         truncation: ResponseTruncationEnum,
         parallelToolCalls: Bool,
-        text: ResponseTextField = ResponseTextField(),
+        text: TextField = .default,
         error: ResponseError,
         temperature: Float,
         topP: Float,
@@ -977,14 +1297,52 @@ public extension ResponseObject {
             error: error
         )
     }
-    
+
+    static func failed(
+        id: String = "resp_\(UUID().uuidString)",
+        model: String,
+        tools: [ResponseTool],
+        truncation: ResponseTruncationEnum,
+        parallelToolCalls: Bool,
+        text: [String: AnyCodable],
+        error: ResponseError,
+        temperature: Float,
+        topP: Float,
+        frequencyPenalty: Float,
+        presencePenalty: Float,
+        topLogprobs: Int,
+        store: Bool,
+        background: Bool,
+        serviceTier: String,
+        createdAt: Date = Date()
+    ) -> ResponseObject {
+        ResponseObject.failed(
+            id: id,
+            model: model,
+            tools: tools,
+            truncation: truncation,
+            parallelToolCalls: parallelToolCalls,
+            text: TextField.fromLegacy(text),
+            error: error,
+            temperature: temperature,
+            topP: topP,
+            frequencyPenalty: frequencyPenalty,
+            presencePenalty: presencePenalty,
+            topLogprobs: topLogprobs,
+            store: store,
+            background: background,
+            serviceTier: serviceTier,
+            createdAt: createdAt
+        )
+    }
+
     static func incomplete(
         id: String = "resp_\(UUID().uuidString)",
         model: String,
         tools: [ResponseTool],
         truncation: ResponseTruncationEnum,
         parallelToolCalls: Bool,
-        text: ResponseTextField = ResponseTextField(),
+        text: TextField = .default,
         output: [ResponseOutput],
         reason: String,
         temperature: Float,
@@ -1019,6 +1377,48 @@ public extension ResponseObject {
             store: store,
             background: background,
             serviceTier: serviceTier
+        )
+    }
+
+    static func incomplete(
+        id: String = "resp_\(UUID().uuidString)",
+        model: String,
+        tools: [ResponseTool],
+        truncation: ResponseTruncationEnum,
+        parallelToolCalls: Bool,
+        text: [String: AnyCodable],
+        output: [ResponseOutput],
+        reason: String,
+        temperature: Float,
+        topP: Float,
+        frequencyPenalty: Float,
+        presencePenalty: Float,
+        topLogprobs: Int,
+        store: Bool,
+        background: Bool,
+        serviceTier: String,
+        usage: ResponseUsage? = nil,
+        createdAt: Date = Date()
+    ) -> ResponseObject {
+        ResponseObject.incomplete(
+            id: id,
+            model: model,
+            tools: tools,
+            truncation: truncation,
+            parallelToolCalls: parallelToolCalls,
+            text: TextField.fromLegacy(text),
+            output: output,
+            reason: reason,
+            temperature: temperature,
+            topP: topP,
+            frequencyPenalty: frequencyPenalty,
+            presencePenalty: presencePenalty,
+            topLogprobs: topLogprobs,
+            store: store,
+            background: background,
+            serviceTier: serviceTier,
+            usage: usage,
+            createdAt: createdAt
         )
     }
 }
@@ -1058,7 +1458,7 @@ public struct ResponseCreateRequest: Codable, Sendable, Equatable {
     public let modalities: [ResponseModality]?
     public let responseFormat: ResponseFormat?
     public let audio: ResponseAudioOptions?
-    public let text: ResponseTextParam?
+    public let text: TextParam?
     public let metadata: [String: AnyCodable]?
     public let temperature: Float?
     public let topP: Float?
@@ -1089,7 +1489,7 @@ public struct ResponseCreateRequest: Codable, Sendable, Equatable {
         modalities: [ResponseModality]? = nil,
         responseFormat: ResponseFormat? = nil,
         audio: ResponseAudioOptions? = nil,
-        text: ResponseTextParam? = nil,
+        text: TextParam? = nil,
         metadata: [String: AnyCodable]? = nil,
         temperature: Float? = nil,
         topP: Float? = nil,
@@ -1144,6 +1544,82 @@ public struct ResponseCreateRequest: Codable, Sendable, Equatable {
         self.previousResponseId = previousResponseId
     }
 
+    public init(
+        model: String? = nil,
+        input: [ResponseInputItem],
+        instructions: String? = nil,
+        modalities: [ResponseModality]? = nil,
+        responseFormat: ResponseFormat? = nil,
+        audio: ResponseAudioOptions? = nil,
+        text: [String: AnyCodable]? = nil,
+        metadata: [String: AnyCodable]? = nil,
+        temperature: Float? = nil,
+        topP: Float? = nil,
+        stream: Bool? = nil,
+        frequencyPenalty: Float? = nil,
+        presencePenalty: Float? = nil,
+        topLogprobs: Int? = nil,
+        store: Bool? = nil,
+        background: Bool? = nil,
+        serviceTier: String? = nil,
+        stop: [String]? = nil,
+        maxOutputTokens: Int? = nil,
+        maxInputTokens: Int? = nil,
+        truncationStrategy: ResponseTruncationStrategy? = nil,
+        reasoning: ResponseReasoningOptions? = nil,
+        logitBias: [String: Float]? = nil,
+        seed: Int? = nil,
+        parallelToolCalls: Bool? = nil,
+        tools: [ResponseTool]? = nil,
+        toolChoice: ToolChoice? = nil,
+        session: String? = nil,
+        previousResponseId: String? = nil
+    ) {
+        let converted: TextParam? = text.map { legacy in
+            // If the caller passed an empty object, still emit a compliant format.
+            if legacy.isEmpty {
+                return TextParam(format: .text(TextResponseFormat()), verbosity: nil)
+            }
+            let param = TextParam.fromLegacy(legacy)
+            // If legacy omitted format entirely, default to text.
+            if param.format == nil {
+                return TextParam(format: .text(TextResponseFormat()), verbosity: param.verbosity)
+            }
+            return param
+        }
+
+        self.init(
+            model: model,
+            input: input,
+            instructions: instructions,
+            modalities: modalities,
+            responseFormat: responseFormat,
+            audio: audio,
+            text: converted,
+            metadata: metadata,
+            temperature: temperature,
+            topP: topP,
+            stream: stream,
+            frequencyPenalty: frequencyPenalty,
+            presencePenalty: presencePenalty,
+            topLogprobs: topLogprobs,
+            store: store,
+            background: background,
+            serviceTier: serviceTier,
+            stop: stop,
+            maxOutputTokens: maxOutputTokens,
+            maxInputTokens: maxInputTokens,
+            truncationStrategy: truncationStrategy,
+            reasoning: reasoning,
+            logitBias: logitBias,
+            seed: seed,
+            parallelToolCalls: parallelToolCalls,
+            tools: tools,
+            toolChoice: toolChoice,
+            session: session,
+            previousResponseId: previousResponseId
+        )
+    }
 }
 
 // MARK: - ResponseCreateRequest Validation
@@ -1153,33 +1629,33 @@ public extension ResponseCreateRequest {
         if input.isEmpty {
             throw PicoResponsesError.validationError("input cannot be empty")
         }
-        
+
+        if let text, text.format == nil {
+            throw PicoResponsesError.validationError("text must include format, e.g. { \"format\": { \"type\": \"text\" } }")
+        }
+
         if let temperature, (temperature < 0 || temperature > 2) {
             throw PicoResponsesError.validationError("temperature must be between 0 and 2")
         }
-        
+
         if let topP, (topP < 0 || topP > 1) {
             throw PicoResponsesError.validationError("topP must be between 0 and 1")
         }
-        
+
         if let frequencyPenalty, (frequencyPenalty < -2 || frequencyPenalty > 2) {
             throw PicoResponsesError.validationError("frequencyPenalty must be between -2 and 2")
         }
-        
+
         if let presencePenalty, (presencePenalty < -2 || presencePenalty > 2) {
             throw PicoResponsesError.validationError("presencePenalty must be between -2 and 2")
         }
-        
+
         if let maxOutputTokens, maxOutputTokens < 1 {
             throw PicoResponsesError.validationError("maxOutputTokens must be at least 1")
         }
-        
+
         if let maxInputTokens, maxInputTokens < 1 {
             throw PicoResponsesError.validationError("maxInputTokens must be at least 1")
-        }
-
-        if let text, text.format.type.isEmpty {
-            throw PicoResponsesError.validationError("text.format.type cannot be empty")
         }
     }
 }
