@@ -753,37 +753,68 @@ public struct ResponseOutput: Codable, Sendable, Equatable {
         self.type = try container.decodeIfPresent(ResponseOutputType.self, forKey: .type) ?? .message
         self.role = try container.decodeIfPresent(MessageRole.self, forKey: .role)
         self.content = try container.decodeIfPresent([ResponseContentBlock].self, forKey: .content) ?? []
-        self.status = try container.decode(ResponseItemStatus.self, forKey: .status)
+        self.status = try container.decodeIfPresent(ResponseItemStatus.self, forKey: .status) ?? .completed
         self.metadata = try container.decodeIfPresent([String: AnyCodable].self, forKey: .metadata)
         self.refusal = try container.decodeIfPresent(ResponseRefusal.self, forKey: .refusal)
         self.summary = try container.decodeIfPresent([AnyCodable].self, forKey: .summary)
-        self.toolChoice = try container.decode(ToolChoice.self, forKey: .toolChoice)
+        self.toolChoice = try container.decodeIfPresent(ToolChoice.self, forKey: .toolChoice) ?? .auto
     }
 
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(id, forKey: .id)
         try container.encode(type, forKey: .type)
-        try container.encodeIfPresent(role, forKey: .role)
+        if type != .reasoning {
+            try container.encodeIfPresent(role, forKey: .role)
+        }
         if type == .reasoning {
-            // Open Responses ReasoningItemParam: `content` must be null and `summary` is required.
-            try container.encodeNil(forKey: .content)
-            if let summary {
-                try container.encode(summary, forKey: .summary)
+            // Open Responses Reference: ReasoningBody
+            // - `summary` is required and must be an array (not null)
+            // - `content` is optional; if present it must be an array (not null)
+            // - ReasoningBody does NOT include `role`, `status`, or `tool_choice`
+
+            // Encode required `summary` as InputTextContent[]
+            let summaryItems: [[String: AnyCodable]]
+            if let summary, !summary.isEmpty {
+                summaryItems = summary.compactMap { part in
+                    guard let dict = part.dictionaryValue,
+                          let text = dict["text"]?.stringValue else { return nil }
+                    return [
+                        "type": AnyCodable("input_text"),
+                        "text": AnyCodable(text)
+                    ]
+                }
             } else {
-                try container.encode([AnyCodable](), forKey: .summary)
+                summaryItems = []
+            }
+            try container.encode(summaryItems, forKey: .summary)
+
+            // Encode optional `content` as InputTextContent[] only when non-empty
+            if !content.isEmpty {
+                let contentItems: [[String: AnyCodable]] = content.compactMap { block in
+                    guard let text = block.text else { return nil }
+                    return [
+                        "type": AnyCodable("input_text"),
+                        "text": AnyCodable(text)
+                    ]
+                }
+                try container.encode(contentItems, forKey: .content)
             }
         } else {
             try container.encode(content, forKey: .content)
         }
-        try container.encode(status, forKey: .status)
+        if type != .reasoning {
+            try container.encode(status, forKey: .status)
+        }
         try container.encodeIfPresent(metadata, forKey: .metadata)
         try container.encodeIfPresent(refusal, forKey: .refusal)
         // For reasoning items, `summary` is handled above (required). For other item types, keep it optional.
         if type != .reasoning {
             try container.encodeIfPresent(summary, forKey: .summary)
         }
-        try container.encode(toolChoice, forKey: .toolChoice)
+        if type != .reasoning {
+            try container.encode(toolChoice, forKey: .toolChoice)
+        }
     }
 }
 
@@ -830,7 +861,7 @@ public extension ResponseOutput {
         toolChoice: ToolChoice
     ) -> ResponseOutput {
         // ReasoningItemParam requires `summary` and `content: null`.
-        let summary: [AnyCodable] = [AnyCodable(["type": "summary_text", "text": summaryText])]
+        let summary: [AnyCodable] = [AnyCodable(["type": "input_text", "text": summaryText])]
         return ResponseOutput(
             id: id,
             type: .reasoning,
