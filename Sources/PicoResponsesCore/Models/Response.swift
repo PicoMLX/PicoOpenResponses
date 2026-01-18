@@ -457,7 +457,9 @@ public enum ResponseContentType: String, Codable, Sendable {
     case outputAudio = "output_audio"
     case toolCall = "tool_call"
     case toolOutput = "tool_output"
-    case reasoning
+    // Open Responses uses `reasoning_text` and `summary_text` as content-part types.
+    // Keep `reasoning` out of generated payloads; it is not a valid content-part type.
+    case reasoningText = "reasoning_text"
     case summaryText = "summary_text"
     case json
 }
@@ -478,7 +480,17 @@ public struct ResponseContentBlock: Codable, Sendable, Equatable {
         let dictionary = try container.decode([String: AnyCodable].self)
         let typeString = dictionary["type"]?.stringValue ?? "text"
         self.type = ResponseContentType(rawValue: typeString) ?? .text
-        self.data = dictionary
+        var normalized = dictionary
+        // Normalize model output blocks to include required fields.
+        if self.type == .outputText {
+            if normalized["annotations"] == nil {
+                normalized["annotations"] = AnyCodable([])
+            }
+            if normalized["logprobs"] == nil {
+                normalized["logprobs"] = AnyCodable([])
+            }
+        }
+        self.data = normalized
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -522,8 +534,16 @@ public extension ResponseContentBlock {
         ResponseContentBlock(type: .inputText, data: ["text": AnyCodable(value)])
     }
 
-    static func outputText(_ value: String) -> ResponseContentBlock {
-        ResponseContentBlock(type: .outputText, data: ["text": AnyCodable(value)])
+    static func outputText(_ value: String, annotations: [AnyCodable] = [], logprobs: [AnyCodable] = []) -> ResponseContentBlock {
+        ResponseContentBlock(
+            type: .outputText,
+            data: [
+                "text": AnyCodable(value),
+                // Open Responses OutputTextContent requires these fields, even if empty.
+                "annotations": AnyCodable(annotations.map { $0.jsonObject }),
+                "logprobs": AnyCodable(logprobs.map { $0.jsonObject })
+            ]
+        )
     }
 
     static func imageURL(_ url: URL) -> ResponseContentBlock {
@@ -533,11 +553,15 @@ public extension ResponseContentBlock {
     static func json(_ object: [String: Any]) -> ResponseContentBlock {
         ResponseContentBlock(type: .json, data: ["json": AnyCodable(object)])
     }
-    
+
     static func reasoning(_ value: String) -> ResponseContentBlock {
-        ResponseContentBlock(type: .reasoning, data: ["text": AnyCodable(value)])
+        ResponseContentBlock(type: .reasoningText, data: ["text": AnyCodable(value)])
     }
-    
+
+    static func summaryText(_ value: String) -> ResponseContentBlock {
+        ResponseContentBlock(type: .summaryText, data: ["text": AnyCodable(value)])
+    }
+
     static func refusal(_ value: String) -> ResponseContentBlock {
         ResponseContentBlock(type: .refusal, data: ["refusal": AnyCodable(value)])
     }
@@ -718,12 +742,25 @@ public struct ResponseOutput: Codable, Sendable, Equatable {
         try container.encode(id, forKey: .id)
         try container.encode(type, forKey: .type)
         try container.encodeIfPresent(role, forKey: .role)
-        try container.encode(content, forKey: .content)
+        if type == .reasoning {
+            // Open Responses ReasoningItemParam: `content` must be null and `summary` is required.
+            try container.encodeNil(forKey: .content)
+            if let summary {
+                try container.encode(summary, forKey: .summary)
+            } else {
+                try container.encode([AnyCodable](), forKey: .summary)
+            }
+        } else {
+            try container.encode(content, forKey: .content)
+        }
         try container.encodeIfPresent(status, forKey: .status)
         try container.encodeIfPresent(metadata, forKey: .metadata)
         try container.encodeIfPresent(finishReason, forKey: .finishReason)
         try container.encodeIfPresent(refusal, forKey: .refusal)
-        try container.encodeIfPresent(summary, forKey: .summary)
+        // For reasoning items, `summary` is handled above (required). For other item types, keep it optional.
+        if type != .reasoning {
+            try container.encodeIfPresent(summary, forKey: .summary)
+        }
         try container.encode(toolChoice, forKey: .toolChoice)
     }
 }
@@ -749,7 +786,7 @@ public extension ResponseOutput {
             toolChoice: toolChoice
         )
     }
-    
+
     static func inProgress(
         id: String = "msg_\(UUID().uuidString)",
         type: ResponseOutputType = .message,
@@ -765,21 +802,37 @@ public extension ResponseOutput {
             toolChoice: toolChoice
         )
     }
-    
+
+    static func reasoning(
+        id: String = "rsn_\(UUID().uuidString)",
+        summaryText: String,
+        status: String = "completed",
+        toolChoice: ToolChoice
+    ) -> ResponseOutput {
+        // ReasoningItemParam requires `summary` and `content: null`.
+        let summary: [AnyCodable] = [AnyCodable(["type": "summary_text", "text": summaryText])]
+        return ResponseOutput(
+            id: id,
+            type: .reasoning,
+            role: nil,
+            content: [],
+            status: status,
+            metadata: nil,
+            finishReason: nil,
+            refusal: nil,
+            summary: summary,
+            toolChoice: toolChoice
+        )
+    }
+
+    // Backwards-compatible overload (keeps existing call sites working).
     static func reasoning(
         id: String = "rsn_\(UUID().uuidString)",
         text: String,
         status: String = "completed",
         toolChoice: ToolChoice
     ) -> ResponseOutput {
-        ResponseOutput(
-            id: id,
-            type: .reasoning,
-            role: .assistant,
-            content: [.reasoning(text)],
-            status: status,
-            toolChoice: toolChoice
-        )
+        return ResponseOutput.reasoning(id: id, summaryText: text, status: status, toolChoice: toolChoice)
     }
 }
 
