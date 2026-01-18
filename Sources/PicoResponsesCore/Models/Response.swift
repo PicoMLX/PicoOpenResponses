@@ -11,6 +11,36 @@ public enum ResponseStatus: String, Codable, Sendable {
     case cancelled
 }
 
+public enum ResponseItemStatus: Codable, Sendable, Equatable {
+    case inProgress
+    case completed
+    case incomplete
+    case unknown(String)
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let raw = try container.decode(String.self)
+        switch raw {
+        case "in_progress": self = .inProgress
+        case "completed": self = .completed
+        case "incomplete": self = .incomplete
+        default: self = .unknown(raw)
+        }
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        let raw: String
+        switch self {
+        case .inProgress: raw = "in_progress"
+        case .completed: raw = "completed"
+        case .incomplete: raw = "incomplete"
+        case .unknown(let value): raw = value
+        }
+        try container.encode(raw)
+    }
+}
+
 public struct ResponseStatusDetails: Codable, Sendable, Equatable {
     public let type: String?
     public let reason: String?
@@ -655,7 +685,7 @@ public struct ResponseOutput: Codable, Sendable, Equatable {
     public let type: ResponseOutputType
     public let role: MessageRole?
     public let content: [ResponseContentBlock]
-    public let status: String?
+    public let status: ResponseItemStatus
     public let metadata: [String: AnyCodable]?
     public let finishReason: String?
     public let refusal: ResponseRefusal?
@@ -667,7 +697,7 @@ public struct ResponseOutput: Codable, Sendable, Equatable {
         type: ResponseOutputType = .message,
         role: MessageRole? = nil,
         content: [ResponseContentBlock] = [],
-        status: String? = nil,
+        status: ResponseItemStatus,
         metadata: [String: AnyCodable]? = nil,
         finishReason: String? = nil,
         refusal: ResponseRefusal? = nil,
@@ -690,7 +720,7 @@ public struct ResponseOutput: Codable, Sendable, Equatable {
         id: String,
         role: MessageRole,
         content: [ResponseContentBlock],
-        status: String? = nil,
+        status: ResponseItemStatus,
         metadata: [String: AnyCodable]? = nil,
         finishReason: String? = nil,
         refusal: ResponseRefusal? = nil,
@@ -729,7 +759,7 @@ public struct ResponseOutput: Codable, Sendable, Equatable {
         self.type = try container.decodeIfPresent(ResponseOutputType.self, forKey: .type) ?? .message
         self.role = try container.decodeIfPresent(MessageRole.self, forKey: .role)
         self.content = try container.decodeIfPresent([ResponseContentBlock].self, forKey: .content) ?? []
-        self.status = try container.decodeIfPresent(String.self, forKey: .status)
+        self.status = try container.decode(ResponseItemStatus.self, forKey: .status)
         self.metadata = try container.decodeIfPresent([String: AnyCodable].self, forKey: .metadata)
         self.finishReason = try container.decodeIfPresent(String.self, forKey: .finishReason)
         self.refusal = try container.decodeIfPresent(ResponseRefusal.self, forKey: .refusal)
@@ -753,7 +783,7 @@ public struct ResponseOutput: Codable, Sendable, Equatable {
         } else {
             try container.encode(content, forKey: .content)
         }
-        try container.encodeIfPresent(status, forKey: .status)
+        try container.encode(status, forKey: .status)
         try container.encodeIfPresent(metadata, forKey: .metadata)
         try container.encodeIfPresent(finishReason, forKey: .finishReason)
         try container.encodeIfPresent(refusal, forKey: .refusal)
@@ -772,7 +802,7 @@ public extension ResponseOutput {
         id: String = "msg_\(UUID().uuidString)",
         text: String,
         role: MessageRole = .assistant,
-        status: String = "completed",
+        status: ResponseItemStatus = .completed,
         finishReason: String? = "stop",
         toolChoice: ToolChoice
     ) -> ResponseOutput {
@@ -798,7 +828,7 @@ public extension ResponseOutput {
             type: type,
             role: role,
             content: [],
-            status: "in_progress",
+            status: .inProgress,
             toolChoice: toolChoice
         )
     }
@@ -806,7 +836,7 @@ public extension ResponseOutput {
     static func reasoning(
         id: String = "rsn_\(UUID().uuidString)",
         summaryText: String,
-        status: String = "completed",
+        status: ResponseItemStatus = .completed,
         toolChoice: ToolChoice
     ) -> ResponseOutput {
         // ReasoningItemParam requires `summary` and `content: null`.
@@ -829,7 +859,7 @@ public extension ResponseOutput {
     static func reasoning(
         id: String = "rsn_\(UUID().uuidString)",
         text: String,
-        status: String = "completed",
+        status: ResponseItemStatus = .completed,
         toolChoice: ToolChoice
     ) -> ResponseOutput {
         return ResponseOutput.reasoning(id: id, summaryText: text, status: status, toolChoice: toolChoice)
@@ -1145,7 +1175,7 @@ private extension ResponseObject {
     }
 }
 
-// MARK: - ResponseObject Convenience Initializers (Server-Side Construction)
+// MARK: - Fix call sites to pass status: .completed if missing or nil
 
 public extension ResponseObject {
     static func completed(
@@ -1431,6 +1461,8 @@ public extension ResponseObject {
             background: background,
             serviceTier: serviceTier
         )
+// MARK: - Fix ResponseOutput call sites in this file to always specify status: .completed if missing or nil
+
     }
 
     static func incomplete(
