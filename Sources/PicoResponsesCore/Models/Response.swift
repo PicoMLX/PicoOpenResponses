@@ -689,7 +689,6 @@ public struct ResponseOutput: Codable, Sendable, Equatable {
     public let metadata: [String: AnyCodable]?
     public let refusal: ResponseRefusal?
     public let summary: [AnyCodable]?
-    public let toolChoice: ToolChoice
 
     public init(
         id: String,
@@ -699,8 +698,7 @@ public struct ResponseOutput: Codable, Sendable, Equatable {
         status: ResponseItemStatus,
         metadata: [String: AnyCodable]? = nil,
         refusal: ResponseRefusal? = nil,
-        summary: [AnyCodable]? = nil,
-        toolChoice: ToolChoice
+        summary: [AnyCodable]? = nil
     ) {
         self.id = id
         self.type = type
@@ -710,7 +708,6 @@ public struct ResponseOutput: Codable, Sendable, Equatable {
         self.metadata = metadata
         self.refusal = refusal
         self.summary = summary
-        self.toolChoice = toolChoice
     }
 
     public init(
@@ -719,8 +716,7 @@ public struct ResponseOutput: Codable, Sendable, Equatable {
         content: [ResponseContentBlock],
         status: ResponseItemStatus,
         metadata: [String: AnyCodable]? = nil,
-        refusal: ResponseRefusal? = nil,
-        toolChoice: ToolChoice
+        refusal: ResponseRefusal? = nil
     ) {
         self.init(
             id: id,
@@ -730,8 +726,7 @@ public struct ResponseOutput: Codable, Sendable, Equatable {
             status: status,
             metadata: metadata,
             refusal: refusal,
-            summary: nil,
-            toolChoice: toolChoice
+            summary: nil
         )
     }
 
@@ -744,7 +739,7 @@ public struct ResponseOutput: Codable, Sendable, Equatable {
         case metadata
         case refusal
         case summary
-        case toolChoice = "tool_choice"
+        // tool_choice is not present at the item level
     }
 
     public init(from decoder: Decoder) throws {
@@ -757,7 +752,6 @@ public struct ResponseOutput: Codable, Sendable, Equatable {
         self.metadata = try container.decodeIfPresent([String: AnyCodable].self, forKey: .metadata)
         self.refusal = try container.decodeIfPresent(ResponseRefusal.self, forKey: .refusal)
         self.summary = try container.decodeIfPresent([AnyCodable].self, forKey: .summary)
-        self.toolChoice = try container.decodeIfPresent(ToolChoice.self, forKey: .toolChoice) ?? .auto
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -812,9 +806,7 @@ public struct ResponseOutput: Codable, Sendable, Equatable {
         if type != .reasoning {
             try container.encodeIfPresent(summary, forKey: .summary)
         }
-        if type != .reasoning {
-            try container.encode(toolChoice, forKey: .toolChoice)
-        }
+        // ReasoningBody does NOT include tool_choice at the item level.
     }
 }
 
@@ -825,40 +817,35 @@ public extension ResponseOutput {
         id: String = "msg_\(UUID().uuidString)",
         text: String,
         role: MessageRole = .assistant,
-        status: ResponseItemStatus = .completed,
-        toolChoice: ToolChoice
+        status: ResponseItemStatus = .completed
     ) -> ResponseOutput {
         ResponseOutput(
             id: id,
             type: .message,
             role: role,
             content: [.outputText(text)],
-            status: status,
-            toolChoice: toolChoice
+            status: status
         )
     }
 
     static func inProgress(
         id: String = "msg_\(UUID().uuidString)",
         type: ResponseOutputType = .message,
-        role: MessageRole = .assistant,
-        toolChoice: ToolChoice
+        role: MessageRole = .assistant
     ) -> ResponseOutput {
         ResponseOutput(
             id: id,
             type: type,
             role: role,
             content: [],
-            status: .inProgress,
-            toolChoice: toolChoice
+            status: .inProgress
         )
     }
 
     static func reasoning(
         id: String = "rsn_\(UUID().uuidString)",
         summaryText: String,
-        status: ResponseItemStatus = .completed,
-        toolChoice: ToolChoice
+        status: ResponseItemStatus = .completed
     ) -> ResponseOutput {
         // ReasoningItemParam requires `summary` and `content: null`.
         let summary: [AnyCodable] = [AnyCodable(["type": "input_text", "text": summaryText])]
@@ -870,8 +857,7 @@ public extension ResponseOutput {
             status: status,
             metadata: nil,
             refusal: nil,
-            summary: summary,
-            toolChoice: toolChoice
+            summary: summary
         )
     }
 
@@ -879,10 +865,9 @@ public extension ResponseOutput {
     static func reasoning(
         id: String = "rsn_\(UUID().uuidString)",
         text: String,
-        status: ResponseItemStatus = .completed,
-        toolChoice: ToolChoice
+        status: ResponseItemStatus = .completed
     ) -> ResponseOutput {
-        return ResponseOutput.reasoning(id: id, summaryText: text, status: status, toolChoice: toolChoice)
+        return ResponseOutput.reasoning(id: id, summaryText: text, status: status)
     }
 }
 
@@ -903,11 +888,12 @@ public struct ResponseObject: Codable, Sendable, Equatable {
     public let safetyIdentifier: String?
     public let promptCacheKey: String?
     public let tools: [ResponseTool]
+    public let toolChoice: ToolChoice
     public let truncation: ResponseTruncationEnum
     public let parallelToolCalls: Bool
     public let text: TextField
     public let output: [ResponseOutput]
-    public let metadata: [String: AnyCodable]?
+    public let metadata: [String: AnyCodable]
     public let temperature: Float
     public let topP: Float
     public let frequencyPenalty: Float
@@ -935,11 +921,12 @@ public struct ResponseObject: Codable, Sendable, Equatable {
         safetyIdentifier: String? = nil,
         promptCacheKey: String? = nil,
         tools: [ResponseTool],
+        toolChoice: ToolChoice = .auto,
         truncation: ResponseTruncationEnum,
         parallelToolCalls: Bool,
         text: TextField,
         output: [ResponseOutput] = [],
-        metadata: [String: AnyCodable]? = nil,
+        metadata: [String: AnyCodable] = [:],
         temperature: Float,
         topP: Float,
         frequencyPenalty: Float,
@@ -966,6 +953,7 @@ public struct ResponseObject: Codable, Sendable, Equatable {
         self.safetyIdentifier = safetyIdentifier
         self.promptCacheKey = promptCacheKey
         self.tools = tools
+        self.toolChoice = toolChoice
         self.truncation = truncation
         self.parallelToolCalls = parallelToolCalls
         self.text = text
@@ -999,11 +987,12 @@ public struct ResponseObject: Codable, Sendable, Equatable {
         safetyIdentifier: String? = nil,
         promptCacheKey: String? = nil,
         tools: [ResponseTool],
+        toolChoice: ToolChoice = .auto,
         truncation: ResponseTruncationEnum,
         parallelToolCalls: Bool,
         text: [String: AnyCodable],
         output: [ResponseOutput] = [],
-        metadata: [String: AnyCodable]? = nil,
+        metadata: [String: AnyCodable] = [:],
         temperature: Float,
         topP: Float,
         frequencyPenalty: Float,
@@ -1031,6 +1020,7 @@ public struct ResponseObject: Codable, Sendable, Equatable {
             safetyIdentifier: safetyIdentifier,
             promptCacheKey: promptCacheKey,
             tools: tools,
+            toolChoice: toolChoice,
             truncation: truncation,
             parallelToolCalls: parallelToolCalls,
             text: TextField.fromLegacy(text),
@@ -1065,6 +1055,7 @@ public struct ResponseObject: Codable, Sendable, Equatable {
         case safetyIdentifier = "safety_identifier"
         case promptCacheKey = "prompt_cache_key"
         case tools
+        case toolChoice = "tool_choice"
         case truncation
         case parallelToolCalls = "parallel_tool_calls"
         case text
@@ -1101,11 +1092,12 @@ public extension ResponseObject {
         try container.encodeOrNull(safetyIdentifier, forKey: .safetyIdentifier)
         try container.encodeOrNull(promptCacheKey, forKey: .promptCacheKey)
         try encodeRequired(tools, forKey: .tools, in: &container)
+        try encodeRequired(toolChoice, forKey: .toolChoice, in: &container)
         try encodeRequired(truncation, forKey: .truncation, in: &container)
         try encodeRequired(parallelToolCalls, forKey: .parallelToolCalls, in: &container)
         try encodeRequired(text, forKey: .text, in: &container)
         try container.encode(output, forKey: .output)
-        try container.encodeIfPresent(metadata, forKey: .metadata)
+        try container.encode(metadata, forKey: .metadata)
         try encodeRequired(temperature, forKey: .temperature, in: &container)
         try encodeRequired(topP, forKey: .topP, in: &container)
         try encodeRequired(frequencyPenalty, forKey: .frequencyPenalty, in: &container)
@@ -1152,7 +1144,7 @@ public extension ResponseObject {
         background: Bool,
         serviceTier: String,
         usage: ResponseUsage? = nil,
-        createdAt: Date = Date(),
+        createdAt: Date = Date()
     ) -> ResponseObject {
         ResponseObject(
             id: id,
@@ -1414,8 +1406,6 @@ public extension ResponseObject {
             background: background,
             serviceTier: serviceTier
         )
-// MARK: - Fix ResponseOutput call sites in this file to always specify status: .completed if missing or nil
-
     }
 
     static func incomplete(
