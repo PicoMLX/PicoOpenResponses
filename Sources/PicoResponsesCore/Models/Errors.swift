@@ -35,6 +35,65 @@ public struct PicoResponsesAPIError: Codable, Sendable, Equatable {
         var container = encoder.singleValueContainer()
         try container.encode(raw)
     }
+
+    public var errorType: PicoResponsesErrorType? {
+        guard let type else { return nil }
+        return PicoResponsesErrorType(type)
+    }
+}
+
+public enum PicoResponsesErrorType: Codable, Sendable, Equatable {
+    case serverError
+    case invalidRequest
+    case notFound
+    case modelError
+    case tooManyRequests
+    case other(String)
+
+    public init(_ value: String) {
+        switch value {
+        case "server_error":
+            self = .serverError
+        case "invalid_request":
+            self = .invalidRequest
+        case "not_found":
+            self = .notFound
+        case "model_error":
+            self = .modelError
+        case "too_many_requests":
+            self = .tooManyRequests
+        default:
+            self = .other(value)
+        }
+    }
+
+    public var rawValue: String {
+        switch self {
+        case .serverError:
+            return "server_error"
+        case .invalidRequest:
+            return "invalid_request"
+        case .notFound:
+            return "not_found"
+        case .modelError:
+            return "model_error"
+        case .tooManyRequests:
+            return "too_many_requests"
+        case .other(let value):
+            return value
+        }
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let value = try container.decode(String.self)
+        self = PicoResponsesErrorType(value)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(rawValue)
+    }
 }
 
 public enum PicoResponsesError: Error, Sendable {
