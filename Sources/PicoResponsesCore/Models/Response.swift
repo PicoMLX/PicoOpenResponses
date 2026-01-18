@@ -687,7 +687,6 @@ public struct ResponseOutput: Codable, Sendable, Equatable {
     public let content: [ResponseContentBlock]
     public let status: ResponseItemStatus
     public let metadata: [String: AnyCodable]?
-    public let finishReason: String?
     public let refusal: ResponseRefusal?
     public let summary: [AnyCodable]?
     public let toolChoice: ToolChoice
@@ -699,7 +698,6 @@ public struct ResponseOutput: Codable, Sendable, Equatable {
         content: [ResponseContentBlock] = [],
         status: ResponseItemStatus,
         metadata: [String: AnyCodable]? = nil,
-        finishReason: String? = nil,
         refusal: ResponseRefusal? = nil,
         summary: [AnyCodable]? = nil,
         toolChoice: ToolChoice
@@ -710,7 +708,6 @@ public struct ResponseOutput: Codable, Sendable, Equatable {
         self.content = content
         self.status = status
         self.metadata = metadata
-        self.finishReason = finishReason
         self.refusal = refusal
         self.summary = summary
         self.toolChoice = toolChoice
@@ -722,7 +719,6 @@ public struct ResponseOutput: Codable, Sendable, Equatable {
         content: [ResponseContentBlock],
         status: ResponseItemStatus,
         metadata: [String: AnyCodable]? = nil,
-        finishReason: String? = nil,
         refusal: ResponseRefusal? = nil,
         toolChoice: ToolChoice
     ) {
@@ -733,7 +729,6 @@ public struct ResponseOutput: Codable, Sendable, Equatable {
             content: content,
             status: status,
             metadata: metadata,
-            finishReason: finishReason,
             refusal: refusal,
             summary: nil,
             toolChoice: toolChoice
@@ -747,7 +742,6 @@ public struct ResponseOutput: Codable, Sendable, Equatable {
         case content
         case status
         case metadata
-        case finishReason = "finish_reason"
         case refusal
         case summary
         case toolChoice = "tool_choice"
@@ -761,7 +755,6 @@ public struct ResponseOutput: Codable, Sendable, Equatable {
         self.content = try container.decodeIfPresent([ResponseContentBlock].self, forKey: .content) ?? []
         self.status = try container.decode(ResponseItemStatus.self, forKey: .status)
         self.metadata = try container.decodeIfPresent([String: AnyCodable].self, forKey: .metadata)
-        self.finishReason = try container.decodeIfPresent(String.self, forKey: .finishReason)
         self.refusal = try container.decodeIfPresent(ResponseRefusal.self, forKey: .refusal)
         self.summary = try container.decodeIfPresent([AnyCodable].self, forKey: .summary)
         self.toolChoice = try container.decode(ToolChoice.self, forKey: .toolChoice)
@@ -785,7 +778,6 @@ public struct ResponseOutput: Codable, Sendable, Equatable {
         }
         try container.encode(status, forKey: .status)
         try container.encodeIfPresent(metadata, forKey: .metadata)
-        try container.encodeIfPresent(finishReason, forKey: .finishReason)
         try container.encodeIfPresent(refusal, forKey: .refusal)
         // For reasoning items, `summary` is handled above (required). For other item types, keep it optional.
         if type != .reasoning {
@@ -803,7 +795,6 @@ public extension ResponseOutput {
         text: String,
         role: MessageRole = .assistant,
         status: ResponseItemStatus = .completed,
-        finishReason: String? = "stop",
         toolChoice: ToolChoice
     ) -> ResponseOutput {
         ResponseOutput(
@@ -812,7 +803,6 @@ public extension ResponseOutput {
             role: role,
             content: [.outputText(text)],
             status: status,
-            finishReason: finishReason,
             toolChoice: toolChoice
         )
     }
@@ -848,7 +838,6 @@ public extension ResponseOutput {
             content: [],
             status: status,
             metadata: nil,
-            finishReason: nil,
             refusal: nil,
             summary: summary,
             toolChoice: toolChoice
@@ -903,7 +892,6 @@ public struct ResponseObject: Codable, Sendable, Equatable {
     public let serviceTier: String
     public let conversationId: String?
     public let session: String?
-    public let finishReason: String?
     public let refusal: ResponseRefusal?
     public let error: ResponseError?
 
@@ -944,7 +932,6 @@ public struct ResponseObject: Codable, Sendable, Equatable {
         serviceTier: String,
         conversationId: String? = nil,
         session: String? = nil,
-        finishReason: String? = nil,
         refusal: ResponseRefusal? = nil,
         error: ResponseError? = nil
     ) {
@@ -984,7 +971,6 @@ public struct ResponseObject: Codable, Sendable, Equatable {
         self.serviceTier = serviceTier
         self.conversationId = conversationId
         self.session = session
-        self.finishReason = finishReason
         self.refusal = refusal
         self.error = error
     }
@@ -1026,7 +1012,6 @@ public struct ResponseObject: Codable, Sendable, Equatable {
         serviceTier: String,
         conversationId: String? = nil,
         session: String? = nil,
-        finishReason: String? = nil,
         refusal: ResponseRefusal? = nil,
         error: ResponseError? = nil
     ) {
@@ -1067,7 +1052,6 @@ public struct ResponseObject: Codable, Sendable, Equatable {
             serviceTier: serviceTier,
             conversationId: conversationId,
             session: session,
-            finishReason: finishReason,
             refusal: refusal,
             error: error
         )
@@ -1110,7 +1094,6 @@ public struct ResponseObject: Codable, Sendable, Equatable {
         case serviceTier = "service_tier"
         case conversationId = "conversation_id"
         case session
-        case finishReason = "finish_reason"
         case refusal
         case error
     }
@@ -1155,7 +1138,6 @@ public extension ResponseObject {
         try encodeRequired(serviceTier, forKey: .serviceTier, in: &container)
         try container.encodeIfPresent(conversationId, forKey: .conversationId)
         try container.encodeIfPresent(session, forKey: .session)
-        try container.encodeIfPresent(finishReason, forKey: .finishReason)
         try container.encodeIfPresent(refusal, forKey: .refusal)
         try container.encodeOrNull(error, forKey: .error)
     }
@@ -1196,7 +1178,6 @@ public extension ResponseObject {
         serviceTier: String,
         usage: ResponseUsage? = nil,
         createdAt: Date = Date(),
-        finishReason: String = "stop"
     ) -> ResponseObject {
         ResponseObject(
             id: id,
@@ -1218,8 +1199,7 @@ public extension ResponseObject {
             topLogprobs: topLogprobs,
             store: store,
             background: background,
-            serviceTier: serviceTier,
-            finishReason: finishReason
+            serviceTier: serviceTier
         )
     }
 
@@ -1240,8 +1220,7 @@ public extension ResponseObject {
         background: Bool,
         serviceTier: String,
         usage: ResponseUsage? = nil,
-        createdAt: Date = Date(),
-        finishReason: String = "stop"
+        createdAt: Date = Date()
     ) -> ResponseObject {
         ResponseObject.completed(
             id: id,
@@ -1260,8 +1239,7 @@ public extension ResponseObject {
             background: background,
             serviceTier: serviceTier,
             usage: usage,
-            createdAt: createdAt,
-            finishReason: finishReason
+            createdAt: createdAt
         )
     }
 
