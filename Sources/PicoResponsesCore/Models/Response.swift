@@ -860,15 +860,10 @@ public struct ResponseObject: Codable, Sendable, Equatable {
     public let object: String
     public let createdAt: Date
     public let completedAt: Date?
-    public let updatedAt: Date?
-    public let expiresAt: Date?
     public let model: String
     public let status: ResponseStatus
-    public let statusDetails: ResponseStatusDetails?
     public let incompleteDetails: ResponseIncompleteDetails?
     public let usage: ResponseUsage?
-    public let modalities: [ResponseModality]?
-    public let responseFormat: ResponseFormat?
     public let instructions: String?
     public let reasoning: ResponseReasoningOptions?
     public let maxOutputTokens: Int?
@@ -890,9 +885,6 @@ public struct ResponseObject: Codable, Sendable, Equatable {
     public let store: Bool
     public let background: Bool
     public let serviceTier: String
-    public let conversationId: String?
-    public let session: String?
-    public let refusal: ResponseRefusal?
     public let error: ResponseError?
 
     public init(
@@ -900,15 +892,10 @@ public struct ResponseObject: Codable, Sendable, Equatable {
         object: String = "response",
         createdAt: Date,
         completedAt: Date? = nil,
-        updatedAt: Date? = nil,
-        expiresAt: Date? = nil,
         model: String,
         status: ResponseStatus,
-        statusDetails: ResponseStatusDetails? = nil,
         incompleteDetails: ResponseIncompleteDetails? = nil,
         usage: ResponseUsage? = nil,
-        modalities: [ResponseModality]? = nil,
-        responseFormat: ResponseFormat? = nil,
         instructions: String? = nil,
         reasoning: ResponseReasoningOptions? = nil,
         maxOutputTokens: Int? = nil,
@@ -930,24 +917,16 @@ public struct ResponseObject: Codable, Sendable, Equatable {
         store: Bool,
         background: Bool,
         serviceTier: String,
-        conversationId: String? = nil,
-        session: String? = nil,
-        refusal: ResponseRefusal? = nil,
         error: ResponseError? = nil
     ) {
         self.id = id
         self.object = object
         self.createdAt = createdAt
         self.completedAt = completedAt
-        self.updatedAt = updatedAt
-        self.expiresAt = expiresAt
         self.model = model
         self.status = status
-        self.statusDetails = statusDetails
         self.incompleteDetails = incompleteDetails
         self.usage = usage
-        self.modalities = modalities
-        self.responseFormat = responseFormat
         self.instructions = instructions
         self.reasoning = reasoning
         self.maxOutputTokens = maxOutputTokens
@@ -969,9 +948,6 @@ public struct ResponseObject: Codable, Sendable, Equatable {
         self.store = store
         self.background = background
         self.serviceTier = serviceTier
-        self.conversationId = conversationId
-        self.session = session
-        self.refusal = refusal
         self.error = error
     }
 
@@ -980,15 +956,10 @@ public struct ResponseObject: Codable, Sendable, Equatable {
         object: String = "response",
         createdAt: Date,
         completedAt: Date? = nil,
-        updatedAt: Date? = nil,
-        expiresAt: Date? = nil,
         model: String,
         status: ResponseStatus,
-        statusDetails: ResponseStatusDetails? = nil,
         incompleteDetails: ResponseIncompleteDetails? = nil,
         usage: ResponseUsage? = nil,
-        modalities: [ResponseModality]? = nil,
-        responseFormat: ResponseFormat? = nil,
         instructions: String? = nil,
         reasoning: ResponseReasoningOptions? = nil,
         maxOutputTokens: Int? = nil,
@@ -1010,9 +981,6 @@ public struct ResponseObject: Codable, Sendable, Equatable {
         store: Bool,
         background: Bool,
         serviceTier: String,
-        conversationId: String? = nil,
-        session: String? = nil,
-        refusal: ResponseRefusal? = nil,
         error: ResponseError? = nil
     ) {
         self.init(
@@ -1020,15 +988,10 @@ public struct ResponseObject: Codable, Sendable, Equatable {
             object: object,
             createdAt: createdAt,
             completedAt: completedAt,
-            updatedAt: updatedAt,
-            expiresAt: expiresAt,
             model: model,
             status: status,
-            statusDetails: statusDetails,
             incompleteDetails: incompleteDetails,
             usage: usage,
-            modalities: modalities,
-            responseFormat: responseFormat,
             instructions: instructions,
             reasoning: reasoning,
             maxOutputTokens: maxOutputTokens,
@@ -1050,9 +1013,6 @@ public struct ResponseObject: Codable, Sendable, Equatable {
             store: store,
             background: background,
             serviceTier: serviceTier,
-            conversationId: conversationId,
-            session: session,
-            refusal: refusal,
             error: error
         )
     }
@@ -1062,15 +1022,10 @@ public struct ResponseObject: Codable, Sendable, Equatable {
         case object
         case createdAt = "created_at"
         case completedAt = "completed_at"
-        case updatedAt = "updated_at"
-        case expiresAt = "expires_at"
         case model
         case status
-        case statusDetails = "status_details"
         case incompleteDetails = "incomplete_details"
         case usage
-        case modalities
-        case responseFormat = "response_format"
         case instructions
         case reasoning
         case maxOutputTokens = "max_output_tokens"
@@ -1092,9 +1047,6 @@ public struct ResponseObject: Codable, Sendable, Equatable {
         case store
         case background
         case serviceTier = "service_tier"
-        case conversationId = "conversation_id"
-        case session
-        case refusal
         case error
     }
 }
@@ -1106,15 +1058,10 @@ public extension ResponseObject {
         try container.encode(object, forKey: .object)
         try container.encode(createdAt, forKey: .createdAt)
         try container.encodeIfPresent(completedAt, forKey: .completedAt)
-        try container.encodeIfPresent(updatedAt, forKey: .updatedAt)
-        try container.encodeIfPresent(expiresAt, forKey: .expiresAt)
         try container.encode(model, forKey: .model)
         try container.encode(status, forKey: .status)
-        try container.encodeIfPresent(statusDetails, forKey: .statusDetails)
         try container.encodeOrNull(incompleteDetails, forKey: .incompleteDetails)
         try container.encodeIfPresent(usage, forKey: .usage)
-        try container.encodeIfPresent(modalities, forKey: .modalities)
-        try container.encodeIfPresent(responseFormat, forKey: .responseFormat)
         try container.encodeOrNull(instructions, forKey: .instructions)
         try container.encodeOrNull(reasoning, forKey: .reasoning)
         try container.encodeOrNull(maxOutputTokens, forKey: .maxOutputTokens)
@@ -1136,9 +1083,6 @@ public extension ResponseObject {
         try encodeRequired(store, forKey: .store, in: &container)
         try encodeRequired(background, forKey: .background, in: &container)
         try encodeRequired(serviceTier, forKey: .serviceTier, in: &container)
-        try container.encodeIfPresent(conversationId, forKey: .conversationId)
-        try container.encodeIfPresent(session, forKey: .session)
-        try container.encodeIfPresent(refusal, forKey: .refusal)
         try container.encodeOrNull(error, forKey: .error)
     }
 }
@@ -1518,9 +1462,6 @@ public struct ResponseCreateRequest: Codable, Sendable, Equatable {
     public let model: String?
     public let input: [ResponseInputItem]
     public let instructions: String?
-    public let modalities: [ResponseModality]?
-    public let responseFormat: ResponseFormat?
-    public let audio: ResponseAudioOptions?
     public let text: TextParam?
     public let metadata: [String: AnyCodable]?
     public let temperature: Float?
@@ -1532,26 +1473,17 @@ public struct ResponseCreateRequest: Codable, Sendable, Equatable {
     public let store: Bool?
     public let background: Bool?
     public let serviceTier: String?
-    public let stop: [String]?
     public let maxOutputTokens: Int?
-    public let maxInputTokens: Int?
-    public let truncationStrategy: ResponseTruncationStrategy?
     public let reasoning: ResponseReasoningOptions?
-    public let logitBias: [String: Float]?
-    public let seed: Int?
     public let parallelToolCalls: Bool?
     public let tools: [ResponseTool]?
     public let toolChoice: ToolChoice?
-    public let session: String?
     public let previousResponseId: String?
 
     public init(
         model: String? = nil,
         input: [ResponseInputItem],
         instructions: String? = nil,
-        modalities: [ResponseModality]? = nil,
-        responseFormat: ResponseFormat? = nil,
-        audio: ResponseAudioOptions? = nil,
         text: TextParam? = nil,
         metadata: [String: AnyCodable]? = nil,
         temperature: Float? = nil,
@@ -1563,25 +1495,16 @@ public struct ResponseCreateRequest: Codable, Sendable, Equatable {
         store: Bool? = nil,
         background: Bool? = nil,
         serviceTier: String? = nil,
-        stop: [String]? = nil,
         maxOutputTokens: Int? = nil,
-        maxInputTokens: Int? = nil,
-        truncationStrategy: ResponseTruncationStrategy? = nil,
         reasoning: ResponseReasoningOptions? = nil,
-        logitBias: [String: Float]? = nil,
-        seed: Int? = nil,
         parallelToolCalls: Bool? = nil,
         tools: [ResponseTool]? = nil,
         toolChoice: ToolChoice? = nil,
-        session: String? = nil,
         previousResponseId: String? = nil
     ) {
         self.model = model
         self.input = input
         self.instructions = instructions
-        self.modalities = modalities
-        self.responseFormat = responseFormat
-        self.audio = audio
         self.text = text
         self.metadata = metadata
         self.temperature = temperature
@@ -1593,17 +1516,11 @@ public struct ResponseCreateRequest: Codable, Sendable, Equatable {
         self.store = store
         self.background = background
         self.serviceTier = serviceTier
-        self.stop = stop
         self.maxOutputTokens = maxOutputTokens
-        self.maxInputTokens = maxInputTokens
-        self.truncationStrategy = truncationStrategy
         self.reasoning = reasoning
-        self.logitBias = logitBias
-        self.seed = seed
         self.parallelToolCalls = parallelToolCalls
         self.tools = tools
         self.toolChoice = toolChoice
-        self.session = session
         self.previousResponseId = previousResponseId
     }
 
@@ -1611,9 +1528,6 @@ public struct ResponseCreateRequest: Codable, Sendable, Equatable {
         model: String? = nil,
         input: [ResponseInputItem],
         instructions: String? = nil,
-        modalities: [ResponseModality]? = nil,
-        responseFormat: ResponseFormat? = nil,
-        audio: ResponseAudioOptions? = nil,
         text: [String: AnyCodable]? = nil,
         metadata: [String: AnyCodable]? = nil,
         temperature: Float? = nil,
@@ -1625,17 +1539,11 @@ public struct ResponseCreateRequest: Codable, Sendable, Equatable {
         store: Bool? = nil,
         background: Bool? = nil,
         serviceTier: String? = nil,
-        stop: [String]? = nil,
         maxOutputTokens: Int? = nil,
-        maxInputTokens: Int? = nil,
-        truncationStrategy: ResponseTruncationStrategy? = nil,
         reasoning: ResponseReasoningOptions? = nil,
-        logitBias: [String: Float]? = nil,
-        seed: Int? = nil,
         parallelToolCalls: Bool? = nil,
         tools: [ResponseTool]? = nil,
         toolChoice: ToolChoice? = nil,
-        session: String? = nil,
         previousResponseId: String? = nil
     ) {
         let converted: TextParam? = text.map { legacy in
@@ -1655,9 +1563,6 @@ public struct ResponseCreateRequest: Codable, Sendable, Equatable {
             model: model,
             input: input,
             instructions: instructions,
-            modalities: modalities,
-            responseFormat: responseFormat,
-            audio: audio,
             text: converted,
             metadata: metadata,
             temperature: temperature,
@@ -1669,17 +1574,11 @@ public struct ResponseCreateRequest: Codable, Sendable, Equatable {
             store: store,
             background: background,
             serviceTier: serviceTier,
-            stop: stop,
             maxOutputTokens: maxOutputTokens,
-            maxInputTokens: maxInputTokens,
-            truncationStrategy: truncationStrategy,
             reasoning: reasoning,
-            logitBias: logitBias,
-            seed: seed,
             parallelToolCalls: parallelToolCalls,
             tools: tools,
             toolChoice: toolChoice,
-            session: session,
             previousResponseId: previousResponseId
         )
     }
@@ -1715,10 +1614,6 @@ public extension ResponseCreateRequest {
 
         if let maxOutputTokens, maxOutputTokens < 1 {
             throw PicoResponsesError.validationError("maxOutputTokens must be at least 1")
-        }
-
-        if let maxInputTokens, maxInputTokens < 1 {
-            throw PicoResponsesError.validationError("maxInputTokens must be at least 1")
         }
     }
 }
