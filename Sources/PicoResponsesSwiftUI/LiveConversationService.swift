@@ -44,7 +44,8 @@ public struct ConversationRequestBuilder: Sendable {
 
     public func makeRequest(
         from messages: [ConversationMessage],
-        previousResponseId: String?
+        previousResponseId: String?,
+        stream: Bool = true
     ) -> ResponseCreateRequest {
         let inputs: [ResponseInputItem]
 
@@ -61,17 +62,37 @@ public struct ConversationRequestBuilder: Sendable {
             }
         }
 
-        var request = ResponseCreateRequest(model: model, input: inputs)
-        request.instructions = instructions
-        request.parallelToolCalls = parallelToolCalls
-        request.metadata = metadata
-        request.temperature = temperature
-        request.topP = topP
-        request.frequencyPenalty = frequencyPenalty
-        request.presencePenalty = presencePenalty
-        request.maxOutputTokens = maxOutputTokens
-        request.previousResponseId = previousResponseId
-        return request
+        return ResponseCreateRequest(
+            model: model,
+            input: inputs,
+            instructions: instructions,
+//            modalities: nil,
+//            responseFormat: nil,
+            audio: nil,
+            text: nil,
+            metadata: metadata,
+            temperature: temperature,
+            topP: topP,
+            stream: stream,
+            frequencyPenalty: frequencyPenalty,
+            presencePenalty: presencePenalty,
+//            topLogprobs: <#T##Int?#>,
+//            store: <#T##Bool?#>,
+//            background: <#T##Bool?#>,
+//            serviceTier: <#T##String?#>,
+//            stop: <#T##[String]?#>,
+            maxOutputTokens: maxOutputTokens,
+//            maxInputTokens: <#T##Int?#>,
+//            truncationStrategy: <#T##ResponseTruncationStrategy?#>,
+//            reasoning: <#T##ResponseReasoningOptions?#>,
+//            logitBias: <#T##[String : Float]?#>,
+//            seed: <#T##Int?#>,
+//            parallelToolCalls: parallelToolCalls,
+//            tools: <#T##[ResponseTool]?#>,
+            toolChoice: .auto,
+//            session: <#T##String?#>,
+            previousResponseId: previousResponseId
+        )
     }
 
     private static func makeInputItem(from message: ConversationMessage) -> ResponseInputItem {
@@ -150,8 +171,11 @@ public actor LiveConversationService: ConversationService {
         with messages: [ConversationMessage],
         previousResponseId: String?
     ) async throws -> ConversationStateSnapshot {
-        var request = requestBuilder.makeRequest(from: messages, previousResponseId: previousResponseId)
-        request.stream = false
+        let request = requestBuilder.makeRequest(
+            from: messages,
+            previousResponseId: previousResponseId,
+            stream: false
+        )
         let response = try await client.create(request: request)
         var snapshot = ConversationStateSnapshot(
             messages: messages,

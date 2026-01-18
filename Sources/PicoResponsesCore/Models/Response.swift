@@ -451,6 +451,7 @@ public struct ResponseOutput: Codable, Sendable, Equatable {
     public let finishReason: String?
     public let refusal: ResponseRefusal?
     public let summary: [AnyCodable]?
+    public let toolChoice: ToolChoice
 
     public init(
         id: String,
@@ -461,7 +462,8 @@ public struct ResponseOutput: Codable, Sendable, Equatable {
         metadata: [String: AnyCodable]? = nil,
         finishReason: String? = nil,
         refusal: ResponseRefusal? = nil,
-        summary: [AnyCodable]? = nil
+        summary: [AnyCodable]? = nil,
+        toolChoice: ToolChoice
     ) {
         self.id = id
         self.type = type
@@ -472,6 +474,7 @@ public struct ResponseOutput: Codable, Sendable, Equatable {
         self.finishReason = finishReason
         self.refusal = refusal
         self.summary = summary
+        self.toolChoice = toolChoice
     }
 
     public init(
@@ -481,7 +484,8 @@ public struct ResponseOutput: Codable, Sendable, Equatable {
         status: String? = nil,
         metadata: [String: AnyCodable]? = nil,
         finishReason: String? = nil,
-        refusal: ResponseRefusal? = nil
+        refusal: ResponseRefusal? = nil,
+        toolChoice: ToolChoice
     ) {
         self.init(
             id: id,
@@ -492,7 +496,8 @@ public struct ResponseOutput: Codable, Sendable, Equatable {
             metadata: metadata,
             finishReason: finishReason,
             refusal: refusal,
-            summary: nil
+            summary: nil,
+            toolChoice: toolChoice
         )
     }
 
@@ -506,6 +511,7 @@ public struct ResponseOutput: Codable, Sendable, Equatable {
         case finishReason = "finish_reason"
         case refusal
         case summary
+        case toolChoice = "tool_choice"
     }
 
     public init(from decoder: Decoder) throws {
@@ -519,6 +525,7 @@ public struct ResponseOutput: Codable, Sendable, Equatable {
         self.finishReason = try container.decodeIfPresent(String.self, forKey: .finishReason)
         self.refusal = try container.decodeIfPresent(ResponseRefusal.self, forKey: .refusal)
         self.summary = try container.decodeIfPresent([AnyCodable].self, forKey: .summary)
+        self.toolChoice = try container.decode(ToolChoice.self, forKey: .toolChoice)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -532,6 +539,7 @@ public struct ResponseOutput: Codable, Sendable, Equatable {
         try container.encodeIfPresent(finishReason, forKey: .finishReason)
         try container.encodeIfPresent(refusal, forKey: .refusal)
         try container.encodeIfPresent(summary, forKey: .summary)
+        try container.encode(toolChoice, forKey: .toolChoice)
     }
 }
 
@@ -543,7 +551,8 @@ public extension ResponseOutput {
         text: String,
         role: MessageRole = .assistant,
         status: String = "completed",
-        finishReason: String? = "stop"
+        finishReason: String? = "stop",
+        toolChoice: ToolChoice
     ) -> ResponseOutput {
         ResponseOutput(
             id: id,
@@ -551,35 +560,40 @@ public extension ResponseOutput {
             role: role,
             content: [.outputText(text)],
             status: status,
-            finishReason: finishReason
+            finishReason: finishReason,
+            toolChoice: toolChoice
         )
     }
     
     static func inProgress(
         id: String = "msg_\(UUID().uuidString)",
         type: ResponseOutputType = .message,
-        role: MessageRole = .assistant
+        role: MessageRole = .assistant,
+        toolChoice: ToolChoice
     ) -> ResponseOutput {
         ResponseOutput(
             id: id,
             type: type,
             role: role,
             content: [],
-            status: "in_progress"
+            status: "in_progress",
+            toolChoice: toolChoice
         )
     }
     
     static func reasoning(
         id: String = "rsn_\(UUID().uuidString)",
         text: String,
-        status: String = "completed"
+        status: String = "completed",
+        toolChoice: ToolChoice
     ) -> ResponseOutput {
         ResponseOutput(
             id: id,
             type: .reasoning,
             role: .assistant,
             content: [.reasoning(text)],
-            status: status
+            status: status,
+            toolChoice: toolChoice
         )
     }
 }
@@ -1625,7 +1639,7 @@ public extension ResponseStreamEvent {
     
     /// Converts the event to an SSE-formatted string: "data: {json}\n\n"
     /// Returns nil if serialization fails.
-    public func toSSEString() -> String? {
+    func toSSEString() -> String? {
         // Build the event data dictionary
         var eventDict: [String: Any] = ["type": type]
         for (key, value) in data {
@@ -1641,7 +1655,7 @@ public extension ResponseStreamEvent {
     }
     
     /// Converts the event to SSE data bytes
-    public func toSSEData() -> Data? {
+    func toSSEData() -> Data? {
         toSSEString()?.data(using: .utf8)
     }
     

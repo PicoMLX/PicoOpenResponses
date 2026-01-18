@@ -458,11 +458,198 @@ public struct ResponseToolDefinition: Codable, Sendable, Equatable {
     }
 }
 
+// MARK: - Tool Choice
+
+public enum ToolChoiceValueEnum: String, Codable, Sendable {
+    case none
+    case auto
+    case required
+}
+
+/// Request-time tool_choice (ToolChoiceParam)
+/// Union of: ToolChoiceValueEnum | SpecificFunctionParam | AllowedToolsParam
+public enum ToolChoiceParam: Codable, Sendable, Equatable {
+    case none
+    case auto
+    case required
+    case specificFunction(name: String)
+    case allowedTools(tools: [SpecificToolChoiceParam], mode: ToolChoiceValueEnum? = nil)
+    case other(type: String, payload: [String: AnyCodable])
+
+    private struct FunctionPayload: Codable, Sendable, Equatable {
+        let name: String
+    }
+
+    private struct SpecificFunctionParam: Codable, Sendable, Equatable {
+        let type: String
+        let function: FunctionPayload
+
+        init(name: String) {
+            self.type = "function"
+            self.function = FunctionPayload(name: name)
+        }
+    }
+
+    private struct AllowedToolsParam: Codable, Sendable, Equatable {
+        let type: String
+        let tools: [SpecificToolChoiceParam]
+        let mode: ToolChoiceValueEnum?
+
+        init(tools: [SpecificToolChoiceParam], mode: ToolChoiceValueEnum?) {
+            self.type = "allowed_tools"
+            self.tools = tools
+            self.mode = mode
+        }
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+
+        // String enum form: "none" | "auto" | "required"
+        if let raw = try? container.decode(String.self), let v = ToolChoiceValueEnum(rawValue: raw) {
+            switch v {
+            case .none: self = .none
+            case .auto: self = .auto
+            case .required: self = .required
+            }
+            return
+        }
+
+        // Object form
+        let dictionary = try container.decode([String: AnyCodable].self)
+        let type = dictionary["type"]?.stringValue ?? "auto"
+
+        switch type {
+        case "allowed_tools":
+            let data = try JSONSerialization.data(withJSONObject: dictionary.jsonObject())
+            let decoded = try ResponsesJSONCoding.makeDecoder().decode(AllowedToolsParam.self, from: data)
+            self = .allowedTools(tools: decoded.tools, mode: decoded.mode)
+
+        case "function", "tool":
+            // Request uses nested {"function":{"name":"..."}}
+            let name = dictionary["function"]?.dictionaryValue?["name"]?.stringValue
+                ?? dictionary["name"]?.stringValue
+                ?? ""
+            self = .specificFunction(name: name)
+
+        default:
+            self = .other(type: type, payload: dictionary)
+        }
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+
+        switch self {
+        case .none:
+            try container.encode(ToolChoiceValueEnum.none.rawValue)
+        case .auto:
+            try container.encode(ToolChoiceValueEnum.auto.rawValue)
+        case .required:
+            try container.encode(ToolChoiceValueEnum.required.rawValue)
+        case .specificFunction(let name):
+            try container.encode(SpecificFunctionParam(name: name))
+        case .allowedTools(let tools, let mode):
+            try container.encode(AllowedToolsParam(tools: tools, mode: mode))
+        case .other(_, let payload):
+            try container.encode(payload)
+        }
+    }
+}
+
+/// Response-time tool_choice (Response.tool_choice)
+/// Union of: ToolChoiceValueEnum | FunctionToolChoice | AllowedToolChoice
 public enum ToolChoice: Codable, Sendable, Equatable {
     case none
     case auto
     case required
-    case named(String)
+    case function(name: String)
+    case allowedTools(tools: [FunctionToolChoice], mode: ToolChoiceValueEnum)
+    case other(type: String, payload: [String: AnyCodable])
+
+    private struct AllowedToolChoice: Codable, Sendable, Equatable {
+        let type: String
+        let tools: [FunctionToolChoice]
+        let mode: ToolChoiceValueEnum
+
+        init(tools: [FunctionToolChoice], mode: ToolChoiceValueEnum) {
+            self.type = "allowed_tools"
+            self.tools = tools
+            self.mode = mode
+        }
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+
+        // String enum form: "none" | "auto" | "required"
+        if let raw = try? container.decode(String.self), let v = ToolChoiceValueEnum(rawValue: raw) {
+            switch v {
+            case .none: self = .none
+            case .auto: self = .auto
+            case .required: self = .required
+            }
+            return
+        }
+
+        // Object form
+        let dictionary = try container.decode([String: AnyCodable].self)
+        let type = dictionary["type"]?.stringValue ?? "auto"
+
+        switch type {
+        case "allowed_tools":
+            let data = try JSONSerialization.data(withJSONObject: dictionary.jsonObject())
+            let decoded = try ResponsesJSONCoding.makeDecoder().decode(AllowedToolChoice.self, from: data)
+            self = .allowedTools(tools: decoded.tools, mode: decoded.mode)
+
+        case "function":
+            // Response uses flat {"type":"function","name":"..."}
+            let name = dictionary["name"]?.stringValue
+                ?? dictionary["function"]?.dictionaryValue?["name"]?.stringValue
+                ?? ""
+            self = .function(name: name)
+
+        default:
+            self = .other(type: type, payload: dictionary)
+        }
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+
+        switch self {
+        case .none:
+            try container.encode(ToolChoiceValueEnum.none.rawValue)
+        case .auto:
+            try container.encode(ToolChoiceValueEnum.auto.rawValue)
+        case .required:
+            try container.encode(ToolChoiceValueEnum.required.rawValue)
+        case .function(let name):
+            try container.encode(FunctionToolChoice(name: name))
+        case .allowedTools(let tools, let mode):
+            try container.encode(AllowedToolChoice(tools: tools, mode: mode))
+        case .other(_, let payload):
+            try container.encode(payload)
+        }
+    }
+}
+
+/// Response object form for selecting a single function tool.
+/// Matches FunctionToolChoice: {"type":"function","name":"..."}
+public struct FunctionToolChoice: Codable, Sendable, Equatable {
+    public let type: String
+    public let name: String
+
+    public init(type: String = "function", name: String) {
+        self.type = type
+        self.name = name
+    }
+}
+
+/// Request object form for selecting a specific tool.
+/// Currently only supports specific function selection.
+public enum SpecificToolChoiceParam: Codable, Sendable, Equatable {
+    case function(name: String)
     case other(type: String, payload: [String: AnyCodable])
 
     private struct FunctionPayload: Codable, Sendable, Equatable {
@@ -472,19 +659,14 @@ public enum ToolChoice: Codable, Sendable, Equatable {
     public init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
         let dictionary = try container.decode([String: AnyCodable].self)
-        let type = dictionary["type"]?.stringValue ?? "auto"
+        let type = dictionary["type"]?.stringValue ?? "function"
+
         switch type {
-        case "none":
-            self = .none
-        case "auto":
-            self = .auto
-        case "required":
-            self = .required
         case "function", "tool":
-            let name = dictionary["function"]?.dictionaryValue? ["name"]?.stringValue
+            let name = dictionary["function"]?.dictionaryValue?["name"]?.stringValue
                 ?? dictionary["name"]?.stringValue
                 ?? ""
-            self = .named(name)
+            self = .function(name: name)
         default:
             self = .other(type: type, payload: dictionary)
         }
@@ -493,13 +675,7 @@ public enum ToolChoice: Codable, Sendable, Equatable {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
         switch self {
-        case .none:
-            try container.encode(["type": AnyCodable("none")])
-        case .auto:
-            try container.encode(["type": AnyCodable("auto")])
-        case .required:
-            try container.encode(["type": AnyCodable("required")])
-        case .named(let name):
+        case .function(let name):
             let payload: [String: AnyCodable] = [
                 "type": AnyCodable("function"),
                 "function": AnyCodable(["name": name])
@@ -512,6 +688,85 @@ public enum ToolChoice: Codable, Sendable, Equatable {
 }
 
 public struct ResponseToolCall: Codable, Sendable, Equatable, Identifiable {
+    /// The stable identifier for this call item (uses `call_id`).
+    public var id: String { callId }
+
+    /// Optional item id (`id`) populated when returned via API.
+    public let itemId: String?
+
+    /// Required call id (`call_id`) generated by the model.
+    public let callId: String
+
+    /// Always `function_call`.
+    public let type: String
+
+    /// The name of the function to call.
+    public let name: String
+
+    /// The function arguments as a JSON string (Open Responses spec).
+    public let arguments: Arguments
+
+    /// The status of the function tool call.
+    public let status: String?
+
+    public init(
+        itemId: String? = nil,
+        callId: String,
+        type: String = "function_call",
+        name: String,
+        arguments: Arguments,
+        status: String? = nil
+    ) {
+        self.itemId = itemId
+        self.callId = callId
+        self.type = type
+        self.name = name
+        self.arguments = arguments
+        self.status = status
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case itemId = "id"
+        case callId = "call_id"
+        case type
+        case name
+        case arguments
+        case status
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.itemId = try container.decodeIfPresent(String.self, forKey: .itemId)
+        self.callId = try container.decode(String.self, forKey: .callId)
+        self.type = try container.decodeIfPresent(String.self, forKey: .type) ?? "function_call"
+        self.name = try container.decode(String.self, forKey: .name)
+        self.arguments = try container.decode(Arguments.self, forKey: .arguments)
+        self.status = try container.decodeIfPresent(String.self, forKey: .status)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encodeIfPresent(itemId, forKey: .itemId)
+        try container.encode(callId, forKey: .callId)
+        try container.encode(type, forKey: .type)
+        try container.encode(name, forKey: .name)
+
+        // Spec requires `arguments` to be a JSON string.
+        // Encode as a string even if it was provided as an object.
+        if let s = arguments.string {
+            try container.encode(s, forKey: .arguments)
+        } else if let json = arguments.json {
+            let obj = json.jsonObject()
+            let data = try JSONSerialization.data(withJSONObject: obj)
+            let s = String(data: data, encoding: .utf8) ?? "{}"
+            try container.encode(s, forKey: .arguments)
+        } else {
+            try container.encode("{}", forKey: .arguments)
+        }
+
+        try container.encodeIfPresent(status, forKey: .status)
+    }
+
     public struct Arguments: Codable, Sendable, Equatable {
         public let string: String?
         public let json: [String: AnyCodable]?
@@ -532,6 +787,7 @@ public struct ResponseToolCall: Codable, Sendable, Equatable, Identifiable {
                     self.json = nil
                 }
             } else if let dictionary = try? container.decode([String: AnyCodable].self) {
+                // Be tolerant on decode, but we will re-encode as a JSON string.
                 self.json = dictionary
                 self.string = nil
             } else {
@@ -542,12 +798,16 @@ public struct ResponseToolCall: Codable, Sendable, Equatable, Identifiable {
 
         public func encode(to encoder: Encoder) throws {
             var container = encoder.singleValueContainer()
+            // Spec wants a string.
             if let string {
                 try container.encode(string)
             } else if let json {
-                try container.encode(json)
+                let obj = json.jsonObject()
+                let data = try JSONSerialization.data(withJSONObject: obj)
+                let s = String(data: data, encoding: .utf8) ?? "{}"
+                try container.encode(s)
             } else {
-                try container.encodeNil()
+                try container.encode("{}")
             }
         }
 
@@ -565,131 +825,45 @@ public struct ResponseToolCall: Codable, Sendable, Equatable, Identifiable {
             return jsonObject.mapValues { AnyCodable($0) }
         }
     }
-
-    public let type: String
-    public let id: String
-    public let name: String
-    public let arguments: Arguments
-    public let status: String?
-    public let startedAt: Date?
-    public let completedAt: Date?
-    public let metadata: [String: AnyCodable]?
-    public let executionContext: [String: AnyCodable]?
-    public let fileIds: [String]?
-    public let error: ResponseToolInvocationError?
-
-    public init(
-        type: String = "tool_call",
-        id: String,
-        name: String,
-        arguments: Arguments,
-        status: String? = nil,
-        startedAt: Date? = nil,
-        completedAt: Date? = nil,
-        metadata: [String: AnyCodable]? = nil,
-        executionContext: [String: AnyCodable]? = nil,
-        fileIds: [String]? = nil,
-        error: ResponseToolInvocationError? = nil
-    ) {
-        self.type = type
-        self.id = id
-        self.name = name
-        self.arguments = arguments
-        self.status = status
-        self.startedAt = startedAt
-        self.completedAt = completedAt
-        self.metadata = metadata
-        self.executionContext = executionContext
-        self.fileIds = fileIds
-        self.error = error
-    }
-
-    enum CodingKeys: String, CodingKey {
-        case type
-        case id
-        case name
-        case arguments
-        case status
-        case startedAt = "started_at"
-        case completedAt = "completed_at"
-        case metadata
-        case executionContext = "execution_context"
-        case fileIds = "file_ids"
-        case error
-    }
-
-    public init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.type = try container.decodeIfPresent(String.self, forKey: .type) ?? "tool_call"
-        self.id = try container.decode(String.self, forKey: .id)
-        self.name = try container.decode(String.self, forKey: .name)
-        self.arguments = try container.decode(Arguments.self, forKey: .arguments)
-        self.status = try container.decodeIfPresent(String.self, forKey: .status)
-        self.startedAt = ResponseToolCall.decodeTimestamp(in: container, forKey: .startedAt)
-        self.completedAt = ResponseToolCall.decodeTimestamp(in: container, forKey: .completedAt)
-        self.metadata = try container.decodeIfPresent([String: AnyCodable].self, forKey: .metadata)
-        self.executionContext = try container.decodeIfPresent([String: AnyCodable].self, forKey: .executionContext)
-        self.fileIds = try container.decodeIfPresent([String].self, forKey: .fileIds)
-        self.error = try container.decodeIfPresent(ResponseToolInvocationError.self, forKey: .error)
-    }
-
-    public func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(type, forKey: .type)
-        try container.encode(id, forKey: .id)
-        try container.encode(name, forKey: .name)
-        try container.encode(arguments, forKey: .arguments)
-        try container.encodeIfPresent(status, forKey: .status)
-        if let startedAt {
-            let seconds = Int64(startedAt.timeIntervalSince1970)
-            try container.encode(seconds, forKey: .startedAt)
-        }
-        if let completedAt {
-            let seconds = Int64(completedAt.timeIntervalSince1970)
-            try container.encode(seconds, forKey: .completedAt)
-        }
-        try container.encodeIfPresent(metadata, forKey: .metadata)
-        try container.encodeIfPresent(executionContext, forKey: .executionContext)
-        try container.encodeIfPresent(fileIds, forKey: .fileIds)
-        try container.encodeIfPresent(error, forKey: .error)
-    }
-
-    private static func decodeTimestamp(
-        in container: KeyedDecodingContainer<CodingKeys>,
-        forKey key: CodingKeys
-    ) -> Date? {
-        if let seconds = try? container.decodeIfPresent(Double.self, forKey: key) {
-            return Date(timeIntervalSince1970: seconds)
-        }
-        if let secondsInt = try? container.decodeIfPresent(Int.self, forKey: key) {
-            return Date(timeIntervalSince1970: TimeInterval(secondsInt))
-        }
-        if let stringValue = try? container.decodeIfPresent(String.self, forKey: key) {
-            if let seconds = Double(stringValue) {
-                return Date(timeIntervalSince1970: seconds)
-            }
-            let formatter = ISO8601DateFormatter()
-            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-            if let date = formatter.date(from: stringValue) {
-                return date
-            }
-            return ISO8601DateFormatter().date(from: stringValue)
-        }
-        if let date = try? container.decodeIfPresent(Date.self, forKey: key) {
-            return date
-        }
-        return nil
-    }
 }
 
 public struct ResponseToolOutput: Codable, Sendable, Equatable {
+    /// Optional item id (`id`) populated when returned via API.
+    public let itemId: String?
+
+    /// Required call id (`call_id`) that this output corresponds to.
+    public let callId: String
+
+    /// Always `function_call_output`.
+    public let type: String
+
+    /// Output payload.
+    public let payload: Payload
+
+    /// The status of the item.
+    public let status: String?
+
+    public init(
+        itemId: String? = nil,
+        callId: String,
+        type: String = "function_call_output",
+        payload: Payload,
+        status: String? = nil
+    ) {
+        self.itemId = itemId
+        self.callId = callId
+        self.type = type
+        self.payload = payload
+        self.status = status
+    }
+
     public enum Payload: Codable, Sendable, Equatable {
         case string(String)
+        case array([AnyCodable])
+        case json([String: AnyCodable])
         case integer(Int64)
         case number(Double)
         case boolean(Bool)
-        case array([AnyCodable])
-        case json([String: AnyCodable])
         case null
         case raw(AnyCodable)
 
@@ -699,19 +873,18 @@ public struct ResponseToolOutput: Codable, Sendable, Equatable {
                 self = .null
             } else if let string = try? container.decode(String.self) {
                 self = .string(string)
+            } else if let jsonArray = try? container.decode([AnyCodable].self) {
+                self = .array(jsonArray)
+            } else if let jsonObject = try? container.decode([String: AnyCodable].self) {
+                self = .json(jsonObject)
             } else if let intValue = try? container.decode(Int64.self) {
                 self = .integer(intValue)
             } else if let doubleValue = try? container.decode(Double.self) {
                 self = .number(doubleValue)
             } else if let boolValue = try? container.decode(Bool.self) {
                 self = .boolean(boolValue)
-            } else if let jsonArray = try? container.decode([AnyCodable].self) {
-                self = .array(jsonArray)
-            } else if let jsonObject = try? container.decode([String: AnyCodable].self) {
-                self = .json(jsonObject)
             } else {
-                let rawValue = try container.decode(AnyCodable.self)
-                self = .raw(rawValue)
+                self = .raw(try container.decode(AnyCodable.self))
             }
         }
 
@@ -720,15 +893,15 @@ public struct ResponseToolOutput: Codable, Sendable, Equatable {
             switch self {
             case .string(let value):
                 try container.encode(value)
+            case .array(let value):
+                try container.encode(value)
+            case .json(let value):
+                try container.encode(value)
             case .integer(let value):
                 try container.encode(value)
             case .number(let value):
                 try container.encode(value)
             case .boolean(let value):
-                try container.encode(value)
-            case .array(let value):
-                try container.encode(value)
-            case .json(let value):
                 try container.encode(value)
             case .null:
                 try container.encodeNil()
@@ -737,99 +910,116 @@ public struct ResponseToolOutput: Codable, Sendable, Equatable {
             }
         }
 
-        public var anyCodable: AnyCodable {
+        /// Returns a JSON string per Open Responses `function_call_output.output` expectations.
+        fileprivate func asJSONString() throws -> String {
             switch self {
-            case .string(let value):
-                return AnyCodable(value)
-            case .integer(let value):
-                return AnyCodable(value)
-            case .number(let value):
-                return AnyCodable(value)
-            case .boolean(let value):
-                return AnyCodable(value)
-            case .array(let value):
-                return AnyCodable(value.map { $0.jsonObject })
-            case .json(let value):
-                return AnyCodable(value.jsonObject())
+            case .string(let s):
+                return s
+            case .json(let obj):
+                let data = try JSONSerialization.data(withJSONObject: obj.jsonObject())
+                return String(data: data, encoding: .utf8) ?? "{}"
+            case .array(let arr):
+                let data = try JSONSerialization.data(withJSONObject: arr.map { $0.jsonObject })
+                return String(data: data, encoding: .utf8) ?? "[]"
+            case .integer(let i):
+                return String(i)
+            case .number(let d):
+                return String(d)
+            case .boolean(let b):
+                return b ? "true" : "false"
             case .null:
-                return AnyCodable(NSNull())
-            case .raw(let value):
-                return value
+                return "null"
+            case .raw(let v):
+                let data = try JSONSerialization.data(withJSONObject: v.jsonObject)
+                return String(data: data, encoding: .utf8) ?? "null"
             }
         }
 
-        public var stringValue: String? {
-            if case let .string(value) = self { return value }
-            return nil
+        /// Heuristic: checks if this looks like an array of content parts (input_text/input_image/input_file/input_video).
+        fileprivate func isContentPartArray() -> Bool {
+            guard case .array(let arr) = self, !arr.isEmpty else { return false }
+            let allowed: Set<String> = ["input_text", "input_image", "input_file", "input_video"]
+            for el in arr {
+                // Try to extract dictionary from el.jsonObject
+                if let dict = el.jsonObject as? [String: Any],
+                   let t = dict["type"] as? String,
+                   allowed.contains(t) {
+                    continue
+                } else {
+                    return false
+                }
+            }
+            return true
         }
-
-        public var dictionaryValue: [String: AnyCodable]? {
-            if case let .json(value) = self { return value }
-            return nil
-        }
-    }
-
-    public let type: String
-    public let toolCallId: String
-    public let payload: Payload
-    public let contentType: String?
-    public let metadata: [String: AnyCodable]?
-    public let error: ResponseToolInvocationError?
-
-    public init(
-        type: String = "tool_output",
-        toolCallId: String,
-        payload: Payload,
-        contentType: String? = nil,
-        metadata: [String: AnyCodable]? = nil,
-        error: ResponseToolInvocationError? = nil
-    ) {
-        self.type = type
-        self.toolCallId = toolCallId
-        self.payload = payload
-        self.contentType = contentType
-        self.metadata = metadata
-        self.error = error
-    }
-
-    public var output: AnyCodable {
-        payload.anyCodable
-    }
-
-    public var stringValue: String? {
-        payload.stringValue
-    }
-
-    public var jsonValue: [String: AnyCodable]? {
-        payload.dictionaryValue
     }
 
     enum CodingKeys: String, CodingKey {
+        case itemId = "id"
+        case callId = "call_id"
         case type
-        case toolCallId = "tool_call_id"
-        case payload = "output"
-        case contentType = "content_type"
-        case metadata
-        case error
+        case output
+        case status
     }
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.type = try container.decodeIfPresent(String.self, forKey: .type) ?? "tool_output"
-        self.toolCallId = try container.decode(String.self, forKey: .toolCallId)
-        self.payload = try container.decode(Payload.self, forKey: .payload)
-        self.contentType = try container.decodeIfPresent(String.self, forKey: .contentType)
-        self.metadata = try container.decodeIfPresent([String: AnyCodable].self, forKey: .metadata)
-        self.error = try container.decodeIfPresent(ResponseToolInvocationError.self, forKey: .error)
+        self.itemId = try container.decodeIfPresent(String.self, forKey: .itemId)
+        self.callId = try container.decode(String.self, forKey: .callId)
+        self.type = try container.decodeIfPresent(String.self, forKey: .type) ?? "function_call_output"
+
+        // `output` can be a string or an array of content parts.
+        self.payload = try container.decode(Payload.self, forKey: .output)
+        self.status = try container.decodeIfPresent(String.self, forKey: .status)
     }
 
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encodeIfPresent(itemId, forKey: .itemId)
+        try container.encode(callId, forKey: .callId)
         try container.encode(type, forKey: .type)
-        try container.encode(toolCallId, forKey: .toolCallId)
-        try container.encode(payload, forKey: .payload)
-        try container.encodeIfPresent(contentType, forKey: .contentType)
-        try container.encodeIfPresent(metadata, forKey: .metadata)
-        try container.encodeIfPresent(error, forKey: .error)
+
+        // Spec: `output` may be either a JSON string, or an array of content outputs.
+        if payload.isContentPartArray() {
+            // Preserve as an array.
+            try container.encode(payload, forKey: .output)
+        } else {
+            // Normalize to a JSON string.
+            let s = try payload.asJSONString()
+            try container.encode(s, forKey: .output)
+        }
+
+        try container.encodeIfPresent(status, forKey: .status)
+    }
+
+    // Convenience accessors
+    public var output: AnyCodable {
+        switch payload {
+        case .string(let s):
+            return AnyCodable(s)
+        case .array(let a):
+            return AnyCodable(a.map { $0.jsonObject })
+        case .json(let j):
+            return AnyCodable(j.jsonObject())
+        case .integer(let i):
+            return AnyCodable(i)
+        case .number(let d):
+            return AnyCodable(d)
+        case .boolean(let b):
+            return AnyCodable(b)
+        case .null:
+            return AnyCodable(NSNull())
+        case .raw(let v):
+            return v
+        }
+    }
+
+    public var stringValue: String? {
+        if case let .string(value) = payload { return value }
+        return nil
+    }
+
+    public var jsonValue: [String: AnyCodable]? {
+        if case let .json(value) = payload { return value }
+        return nil
     }
 }
