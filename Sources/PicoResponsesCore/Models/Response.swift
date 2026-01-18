@@ -183,6 +183,45 @@ public struct OutputTokenDetails: Codable, Sendable, Equatable {
 
 // MARK: - Response Options
 
+public enum TextVerbosity: String, Codable, Sendable, Equatable {
+    case low
+    case medium
+    case high
+}
+
+/// `TextResponseFormat` as defined by Open Responses. This is the minimum required shape
+/// for `text.format` when using plain text output.
+public struct TextResponseFormat: Codable, Sendable, Equatable {
+    public let type: String
+
+    public init(type: String = "text") {
+        self.type = type
+    }
+}
+
+/// Request-side `text` configuration (TextParam in the spec).
+/// The acceptance tests require `format` to be present when `text` is provided.
+public struct ResponseTextParam: Codable, Sendable, Equatable {
+    public let format: TextResponseFormat
+    public let verbosity: TextVerbosity?
+
+    public init(format: TextResponseFormat = TextResponseFormat(), verbosity: TextVerbosity? = nil) {
+        self.format = format
+        self.verbosity = verbosity
+    }
+}
+
+/// Response-side `text` configuration (TextField in the spec). `format` is required.
+public struct ResponseTextField: Codable, Sendable, Equatable {
+    public let format: TextResponseFormat
+    public let verbosity: TextVerbosity?
+
+    public init(format: TextResponseFormat = TextResponseFormat(), verbosity: TextVerbosity? = nil) {
+        self.format = format
+        self.verbosity = verbosity
+    }
+}
+
 public enum ResponseModality: String, Codable, Sendable {
     case text
     case audio
@@ -610,7 +649,7 @@ public struct ResponseObject: Codable, Sendable, Equatable {
     public let tools: [ResponseTool]
     public let truncation: ResponseTruncationEnum
     public let parallelToolCalls: Bool
-    public let text: [String: AnyCodable]
+    public let text: ResponseTextField
     public let output: [ResponseOutput]
     public let metadata: [String: AnyCodable]?
     public let temperature: Float
@@ -651,7 +690,7 @@ public struct ResponseObject: Codable, Sendable, Equatable {
         tools: [ResponseTool],
         truncation: ResponseTruncationEnum,
         parallelToolCalls: Bool,
-        text: [String: AnyCodable],
+        text: ResponseTextField,
         output: [ResponseOutput] = [],
         metadata: [String: AnyCodable]? = nil,
         temperature: Float,
@@ -778,7 +817,7 @@ public extension ResponseObject {
         try encodeRequired(tools, forKey: .tools, in: &container)
         try encodeRequired(truncation, forKey: .truncation, in: &container)
         try encodeRequired(parallelToolCalls, forKey: .parallelToolCalls, in: &container)
-        try encodeRequired(text, forKey: .text, in: &container)
+        try container.encode(text, forKey: .text)
         try container.encode(output, forKey: .output)
         try container.encodeIfPresent(metadata, forKey: .metadata)
         try encodeRequired(temperature, forKey: .temperature, in: &container)
@@ -820,7 +859,7 @@ public extension ResponseObject {
         tools: [ResponseTool],
         truncation: ResponseTruncationEnum,
         parallelToolCalls: Bool,
-        text: [String: AnyCodable],
+        text: ResponseTextField = ResponseTextField(),
         output: [ResponseOutput],
         temperature: Float,
         topP: Float,
@@ -865,7 +904,7 @@ public extension ResponseObject {
         tools: [ResponseTool],
         truncation: ResponseTruncationEnum,
         parallelToolCalls: Bool,
-        text: [String: AnyCodable],
+        text: ResponseTextField = ResponseTextField(),
         temperature: Float,
         topP: Float,
         frequencyPenalty: Float,
@@ -904,7 +943,7 @@ public extension ResponseObject {
         tools: [ResponseTool],
         truncation: ResponseTruncationEnum,
         parallelToolCalls: Bool,
-        text: [String: AnyCodable],
+        text: ResponseTextField = ResponseTextField(),
         error: ResponseError,
         temperature: Float,
         topP: Float,
@@ -945,7 +984,7 @@ public extension ResponseObject {
         tools: [ResponseTool],
         truncation: ResponseTruncationEnum,
         parallelToolCalls: Bool,
-        text: [String: AnyCodable],
+        text: ResponseTextField = ResponseTextField(),
         output: [ResponseOutput],
         reason: String,
         temperature: Float,
@@ -1019,7 +1058,7 @@ public struct ResponseCreateRequest: Codable, Sendable, Equatable {
     public let modalities: [ResponseModality]?
     public let responseFormat: ResponseFormat?
     public let audio: ResponseAudioOptions?
-    public let text: [String: AnyCodable]?
+    public let text: ResponseTextParam?
     public let metadata: [String: AnyCodable]?
     public let temperature: Float?
     public let topP: Float?
@@ -1050,7 +1089,7 @@ public struct ResponseCreateRequest: Codable, Sendable, Equatable {
         modalities: [ResponseModality]? = nil,
         responseFormat: ResponseFormat? = nil,
         audio: ResponseAudioOptions? = nil,
-        text: [String: AnyCodable]? = nil,
+        text: ResponseTextParam? = nil,
         metadata: [String: AnyCodable]? = nil,
         temperature: Float? = nil,
         topP: Float? = nil,
@@ -1137,6 +1176,10 @@ public extension ResponseCreateRequest {
         
         if let maxInputTokens, maxInputTokens < 1 {
             throw PicoResponsesError.validationError("maxInputTokens must be at least 1")
+        }
+
+        if let text, text.format.type.isEmpty {
+            throw PicoResponsesError.validationError("text.format.type cannot be empty")
         }
     }
 }
