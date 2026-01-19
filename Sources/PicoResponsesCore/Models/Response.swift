@@ -1993,6 +1993,8 @@ public extension ResponseStreamEvent {
                 "item_id": AnyCodable(itemId),
                 "output_index": AnyCodable(outputIndex),
                 "content_index": AnyCodable(contentIndex),
+                "logprobs": AnyCodable([]),
+                "obfuscation": AnyCodable(""),
                 "delta": AnyCodable(delta),
                 "sequence_number": AnyCodable(sequenceNumber)
             ]
@@ -2123,7 +2125,7 @@ public extension ResponseStreamEvent {
     
     // MARK: - SSE Serialization
     
-    /// Converts the event to an SSE-formatted string: "data: {json}\n\n"
+    /// Converts the event to an SSE-formatted string: "event: ...\ndata: {json}\n\n"
     /// Returns nil if serialization fails.
     func toSSEString() -> String? {
         // Build the event data dictionary
@@ -2137,7 +2139,7 @@ public extension ResponseStreamEvent {
             return nil
         }
         
-        return "data: \(jsonString)\n\n"
+        return "event: \(type)\n" + "data: \(jsonString)\n\n"
     }
     
     /// Converts the event to SSE data bytes
