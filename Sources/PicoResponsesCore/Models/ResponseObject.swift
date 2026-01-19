@@ -293,31 +293,31 @@ public struct TextField: Codable, Sendable, Equatable {
     }
 
     /// Best-effort conversion from legacy `[String: AnyCodable]`.
-    public static func fromLegacy(_ legacy: [String: AnyCodable]) -> TextField {
-        let verbosity = legacy["verbosity"]?.stringValue.flatMap(VerbosityEnum.init(rawValue:)) ?? .medium
-
-        if let fmt = legacy["format"]?.dictionaryValue,
-           let type = fmt["type"]?.stringValue {
-            switch type {
-            case "json_object":
-                return TextField(format: .jsonObject(JsonObjectResponseFormat()), verbosity: verbosity)
-            case "json_schema":
-                // Response-side json_schema requires name/description/schema/strict; fall back to text if missing.
-                if let name = fmt["name"]?.stringValue,
-                   let description = fmt["description"]?.stringValue,
-                   let schema = fmt["schema"],
-                   let strict = fmt["strict"]?.boolValue {
-                    return TextField(format: .jsonSchema(JsonSchemaResponseFormat(name: name, description: description, schema: schema, strict: strict)), verbosity: verbosity)
-                }
-                return TextField(format: .text(TextResponseFormat()), verbosity: verbosity)
-            default:
-                return TextField(format: .text(TextResponseFormat()), verbosity: verbosity)
-            }
-        }
-
-        // Legacy empty object => compliant default (includes format + verbosity).
-        return TextField.default
-    }
+//    public static func fromLegacy(_ legacy: [String: AnyCodable]) -> TextField {
+//        let verbosity = legacy["verbosity"]?.stringValue.flatMap(VerbosityEnum.init(rawValue:)) ?? .medium
+//
+//        if let fmt = legacy["format"]?.dictionaryValue,
+//           let type = fmt["type"]?.stringValue {
+//            switch type {
+//            case "json_object":
+//                return TextField(format: .jsonObject(JsonObjectResponseFormat()), verbosity: verbosity)
+//            case "json_schema":
+//                // Response-side json_schema requires name/description/schema/strict; fall back to text if missing.
+//                if let name = fmt["name"]?.stringValue,
+//                   let description = fmt["description"]?.stringValue,
+//                   let schema = fmt["schema"],
+//                   let strict = fmt["strict"]?.boolValue {
+//                    return TextField(format: .jsonSchema(JsonSchemaResponseFormat(name: name, description: description, schema: schema, strict: strict)), verbosity: verbosity)
+//                }
+//                return TextField(format: .text(TextResponseFormat()), verbosity: verbosity)
+//            default:
+//                return TextField(format: .text(TextResponseFormat()), verbosity: verbosity)
+//            }
+//        }
+//
+//        // Legacy empty object => compliant default (includes format + verbosity).
+//        return TextField.default
+//    }
 }
 
 // MARK: - Outputs & Responses
@@ -624,73 +624,73 @@ public struct ResponseObject: Codable, Sendable, Equatable {
         self.error = error
     }
 
-    public init(
-        id: String,
-        object: String = "response",
-        createdAt: Date,
-        completedAt: Date? = nil,
-        model: String,
-        status: ResponseStatus,
-        incompleteDetails: ResponseIncompleteDetails? = nil,
-        usage: ResponseUsage? = nil,
-        instructions: String? = nil,
-        reasoning: ResponseReasoningOptions? = nil,
-        maxOutputTokens: Int? = nil,
-        maxToolCalls: Int? = nil,
-        previousResponseId: String? = nil,
-        safetyIdentifier: String? = nil,
-        promptCacheKey: String? = nil,
-        tools: [ResponseTool],
-        toolChoice: ToolChoice = .auto,
-        truncation: ResponseTruncationEnum,
-        parallelToolCalls: Bool,
-        text: [String: AnyCodable],
-        output: [ResponseOutput] = [],
-        metadata: [String: AnyCodable] = [:],
-        temperature: Float,
-        topP: Float,
-        frequencyPenalty: Float,
-        presencePenalty: Float,
-        topLogprobs: Int,
-        store: Bool,
-        background: Bool,
-        serviceTier: String,
-        error: ResponseError? = nil
-    ) {
-        self.init(
-            id: id,
-            object: object,
-            createdAt: createdAt,
-            completedAt: completedAt,
-            model: model,
-            status: status,
-            incompleteDetails: incompleteDetails,
-            usage: usage,
-            instructions: instructions,
-            reasoning: reasoning,
-            maxOutputTokens: maxOutputTokens,
-            maxToolCalls: maxToolCalls,
-            previousResponseId: previousResponseId,
-            safetyIdentifier: safetyIdentifier,
-            promptCacheKey: promptCacheKey,
-            tools: tools,
-            toolChoice: toolChoice,
-            truncation: truncation,
-            parallelToolCalls: parallelToolCalls,
-            text: TextField.fromLegacy(text),
-            output: output,
-            metadata: metadata,
-            temperature: temperature,
-            topP: topP,
-            frequencyPenalty: frequencyPenalty,
-            presencePenalty: presencePenalty,
-            topLogprobs: topLogprobs,
-            store: store,
-            background: background,
-            serviceTier: serviceTier,
-            error: error
-        )
-    }
+//    public init(
+//        id: String,
+//        object: String = "response",
+//        createdAt: Date,
+//        completedAt: Date? = nil,
+//        model: String,
+//        status: ResponseStatus,
+//        incompleteDetails: ResponseIncompleteDetails? = nil,
+//        usage: ResponseUsage? = nil,
+//        instructions: String? = nil,
+//        reasoning: ResponseReasoningOptions? = nil,
+//        maxOutputTokens: Int? = nil,
+//        maxToolCalls: Int? = nil,
+//        previousResponseId: String? = nil,
+//        safetyIdentifier: String? = nil,
+//        promptCacheKey: String? = nil,
+//        tools: [ResponseTool],
+//        toolChoice: ToolChoice = .auto,
+//        truncation: ResponseTruncationEnum,
+//        parallelToolCalls: Bool,
+//        text: [String: AnyCodable],
+//        output: [ResponseOutput] = [],
+//        metadata: [String: AnyCodable] = [:],
+//        temperature: Float,
+//        topP: Float,
+//        frequencyPenalty: Float,
+//        presencePenalty: Float,
+//        topLogprobs: Int,
+//        store: Bool,
+//        background: Bool,
+//        serviceTier: String,
+//        error: ResponseError? = nil
+//    ) {
+//        self.init(
+//            id: id,
+//            object: object,
+//            createdAt: createdAt,
+//            completedAt: completedAt,
+//            model: model,
+//            status: status,
+//            incompleteDetails: incompleteDetails,
+//            usage: usage,
+//            instructions: instructions,
+//            reasoning: reasoning,
+//            maxOutputTokens: maxOutputTokens,
+//            maxToolCalls: maxToolCalls,
+//            previousResponseId: previousResponseId,
+//            safetyIdentifier: safetyIdentifier,
+//            promptCacheKey: promptCacheKey,
+//            tools: tools,
+//            toolChoice: toolChoice,
+//            truncation: truncation,
+//            parallelToolCalls: parallelToolCalls,
+//            text: TextField.fromLegacy(text),
+//            output: output,
+//            metadata: metadata,
+//            temperature: temperature,
+//            topP: topP,
+//            frequencyPenalty: frequencyPenalty,
+//            presencePenalty: presencePenalty,
+//            topLogprobs: topLogprobs,
+//            store: store,
+//            background: background,
+//            serviceTier: serviceTier,
+//            error: error
+//        )
+//    }
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -824,46 +824,6 @@ public extension ResponseObject {
         )
     }
 
-    static func completed(
-        id: String = "resp_\(UUID().uuidString)",
-        model: String,
-        tools: [ResponseTool],
-        truncation: ResponseTruncationEnum,
-        parallelToolCalls: Bool,
-        text: [String: AnyCodable],
-        output: [ResponseOutput],
-        temperature: Float,
-        topP: Float,
-        frequencyPenalty: Float,
-        presencePenalty: Float,
-        topLogprobs: Int,
-        store: Bool,
-        background: Bool,
-        serviceTier: String,
-        usage: ResponseUsage? = nil,
-        createdAt: Date = Date()
-    ) -> ResponseObject {
-        ResponseObject.completed(
-            id: id,
-            model: model,
-            tools: tools,
-            truncation: truncation,
-            parallelToolCalls: parallelToolCalls,
-            text: TextField.fromLegacy(text),
-            output: output,
-            temperature: temperature,
-            topP: topP,
-            frequencyPenalty: frequencyPenalty,
-            presencePenalty: presencePenalty,
-            topLogprobs: topLogprobs,
-            store: store,
-            background: background,
-            serviceTier: serviceTier,
-            usage: usage,
-            createdAt: createdAt
-        )
-    }
-
     static func inProgress(
         id: String = "resp_\(UUID().uuidString)",
         model: String,
@@ -900,42 +860,6 @@ public extension ResponseObject {
             store: store,
             background: background,
             serviceTier: serviceTier
-        )
-    }
-
-    static func inProgress(
-        id: String = "resp_\(UUID().uuidString)",
-        model: String,
-        tools: [ResponseTool],
-        truncation: ResponseTruncationEnum,
-        parallelToolCalls: Bool,
-        text: [String: AnyCodable],
-        temperature: Float,
-        topP: Float,
-        frequencyPenalty: Float,
-        presencePenalty: Float,
-        topLogprobs: Int,
-        store: Bool,
-        background: Bool,
-        serviceTier: String,
-        createdAt: Date = Date()
-    ) -> ResponseObject {
-        ResponseObject.inProgress(
-            id: id,
-            model: model,
-            tools: tools,
-            truncation: truncation,
-            parallelToolCalls: parallelToolCalls,
-            text: TextField.fromLegacy(text),
-            temperature: temperature,
-            topP: topP,
-            frequencyPenalty: frequencyPenalty,
-            presencePenalty: presencePenalty,
-            topLogprobs: topLogprobs,
-            store: store,
-            background: background,
-            serviceTier: serviceTier,
-            createdAt: createdAt
         )
     }
 
@@ -980,44 +904,6 @@ public extension ResponseObject {
         )
     }
 
-    static func failed(
-        id: String = "resp_\(UUID().uuidString)",
-        model: String,
-        tools: [ResponseTool],
-        truncation: ResponseTruncationEnum,
-        parallelToolCalls: Bool,
-        text: [String: AnyCodable],
-        error: ResponseError,
-        temperature: Float,
-        topP: Float,
-        frequencyPenalty: Float,
-        presencePenalty: Float,
-        topLogprobs: Int,
-        store: Bool,
-        background: Bool,
-        serviceTier: String,
-        createdAt: Date = Date()
-    ) -> ResponseObject {
-        ResponseObject.failed(
-            id: id,
-            model: model,
-            tools: tools,
-            truncation: truncation,
-            parallelToolCalls: parallelToolCalls,
-            text: TextField.fromLegacy(text),
-            error: error,
-            temperature: temperature,
-            topP: topP,
-            frequencyPenalty: frequencyPenalty,
-            presencePenalty: presencePenalty,
-            topLogprobs: topLogprobs,
-            store: store,
-            background: background,
-            serviceTier: serviceTier,
-            createdAt: createdAt
-        )
-    }
-
     static func incomplete(
         id: String = "resp_\(UUID().uuidString)",
         model: String,
@@ -1059,48 +945,6 @@ public extension ResponseObject {
             store: store,
             background: background,
             serviceTier: serviceTier
-        )
-    }
-
-    static func incomplete(
-        id: String = "resp_\(UUID().uuidString)",
-        model: String,
-        tools: [ResponseTool],
-        truncation: ResponseTruncationEnum,
-        parallelToolCalls: Bool,
-        text: [String: AnyCodable],
-        output: [ResponseOutput],
-        reason: String,
-        temperature: Float,
-        topP: Float,
-        frequencyPenalty: Float,
-        presencePenalty: Float,
-        topLogprobs: Int,
-        store: Bool,
-        background: Bool,
-        serviceTier: String,
-        usage: ResponseUsage? = nil,
-        createdAt: Date = Date()
-    ) -> ResponseObject {
-        ResponseObject.incomplete(
-            id: id,
-            model: model,
-            tools: tools,
-            truncation: truncation,
-            parallelToolCalls: parallelToolCalls,
-            text: TextField.fromLegacy(text),
-            output: output,
-            reason: reason,
-            temperature: temperature,
-            topP: topP,
-            frequencyPenalty: frequencyPenalty,
-            presencePenalty: presencePenalty,
-            topLogprobs: topLogprobs,
-            store: store,
-            background: background,
-            serviceTier: serviceTier,
-            usage: usage,
-            createdAt: createdAt
         )
     }
 }
