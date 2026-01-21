@@ -74,6 +74,32 @@ public struct ResponseReasoning: Codable, Sendable, Equatable {
         self.effort = effort
         self.summary = summary
     }
+
+    enum CodingKeys: String, CodingKey {
+        case effort
+        case summary
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        for key in [CodingKeys.effort, CodingKeys.summary] where !container.contains(key) {
+            throw DecodingError.keyNotFound(
+                key,
+                DecodingError.Context(
+                    codingPath: container.codingPath,
+                    debugDescription: "`\(key.stringValue)` is required."
+                )
+            )
+        }
+        self.effort = try container.decodeIfPresent(ResponseReasoningEffort.self, forKey: .effort)
+        self.summary = try container.decodeIfPresent(ResponseReasoningSummary.self, forKey: .summary)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encodeOrNull(effort, forKey: .effort)
+        try container.encodeOrNull(summary, forKey: .summary)
+    }
 }
 
 public struct ResponseReasoningParam: Codable, Sendable, Equatable {
@@ -198,11 +224,11 @@ public extension ResponseContentBlock {
         )
     }
 
-    static func imageURL(_ url: URL, detail: String? = nil) -> ResponseContentBlock {
-        var data: [String: AnyCodable] = ["image_url": AnyCodable(url.absoluteString)]
-        if let detail {
-            data["detail"] = AnyCodable(detail)
-        }
+    static func imageURL(_ url: URL, detail: String = "auto") -> ResponseContentBlock {
+        let data: [String: AnyCodable] = [
+            "image_url": AnyCodable(url.absoluteString),
+            "detail": AnyCodable(detail)
+        ]
         return ResponseContentBlock(type: .inputImage, data: data)
     }
 

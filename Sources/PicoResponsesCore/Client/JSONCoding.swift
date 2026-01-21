@@ -14,6 +14,7 @@ public enum ResponsesJSONCoding {
     public static func makeDecoder() -> JSONDecoder {
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
+        // TODO: Consider a strict decoding mode toggle for future spec compliance audits.
         decoder.dateDecodingStrategy = .custom { decoder in
             let container = try decoder.singleValueContainer()
             if let intSeconds = try? container.decode(Int64.self) {

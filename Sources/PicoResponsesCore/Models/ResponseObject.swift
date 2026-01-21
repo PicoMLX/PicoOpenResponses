@@ -92,14 +92,34 @@ public struct ResponseIncompleteDetails: Codable, Sendable, Equatable {
     public init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
         let raw = try container.decode([String: AnyCodable].self)
-        self.reason = raw["reason"]?.stringValue
+        guard let reason = raw["reason"]?.stringValue else {
+            throw DecodingError.dataCorruptedError(
+                in: container,
+                debugDescription: "`reason` is required."
+            )
+        }
+        self.reason = reason
         self.type = raw["type"]?.stringValue
         self.raw = raw
     }
 
     public func encode(to encoder: Encoder) throws {
+        var payload = raw
+        let reasonValue = payload["reason"]?.stringValue ?? reason
+        guard let reasonValue else {
+            throw EncodingError.invalidValue(
+                raw,
+                EncodingError.Context(
+                    codingPath: encoder.codingPath,
+                    debugDescription: "`reason` is required."
+                )
+            )
+        }
+        if payload["reason"] == nil {
+            payload["reason"] = AnyCodable(reasonValue)
+        }
         var container = encoder.singleValueContainer()
-        try container.encode(raw)
+        try container.encode(payload)
     }
 }
 
@@ -151,15 +171,45 @@ public struct ResponseError: Codable, Sendable, Equatable {
     public init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
         let raw = try container.decode([String: AnyCodable].self)
-        self.code = raw["code"]?.stringValue
-        self.message = raw["message"]?.stringValue
+        guard let code = raw["code"]?.stringValue else {
+            throw DecodingError.dataCorruptedError(
+                in: container,
+                debugDescription: "`code` is required."
+            )
+        }
+        guard let message = raw["message"]?.stringValue else {
+            throw DecodingError.dataCorruptedError(
+                in: container,
+                debugDescription: "`message` is required."
+            )
+        }
+        self.code = code
+        self.message = message
         self.param = raw["param"]?.stringValue
         self.raw = raw
     }
 
     public func encode(to encoder: Encoder) throws {
+        var payload = raw
+        let codeValue = payload["code"]?.stringValue ?? code
+        let messageValue = payload["message"]?.stringValue ?? message
+        guard let codeValue, let messageValue else {
+            throw EncodingError.invalidValue(
+                raw,
+                EncodingError.Context(
+                    codingPath: encoder.codingPath,
+                    debugDescription: "`code` and `message` are required."
+                )
+            )
+        }
+        if payload["code"] == nil {
+            payload["code"] = AnyCodable(codeValue)
+        }
+        if payload["message"] == nil {
+            payload["message"] = AnyCodable(messageValue)
+        }
         var container = encoder.singleValueContainer()
-        try container.encode(raw)
+        try container.encode(payload)
     }
 }
 
@@ -317,6 +367,7 @@ public enum ResponseOutputType: String, Codable, Sendable {
     case message
     case reasoning
     case functionCall = "function_call"
+    case functionCallOutput = "function_call_output"
     case fileSearchCall = "file_search_call"
     case webSearchCall = "web_search_call"
     case codeInterpreterCall = "code_interpreter_call"
@@ -331,6 +382,11 @@ public struct ResponseOutput: Codable, Sendable, Equatable {
     public let role: MessageRole?
     public let content: [ResponseContentBlock]
     public let status: ResponseItemStatus
+    public let callId: String?
+    public let name: String?
+    public let arguments: ResponseToolCall.Arguments?
+    public let output: ResponseToolOutput.Payload?
+    public let encryptedContent: String?
     public let metadata: [String: AnyCodable]?
     public let refusal: ResponseRefusal?
     public let summary: [AnyCodable]?
@@ -341,6 +397,11 @@ public struct ResponseOutput: Codable, Sendable, Equatable {
         role: MessageRole? = nil,
         content: [ResponseContentBlock] = [],
         status: ResponseItemStatus,
+        callId: String? = nil,
+        name: String? = nil,
+        arguments: ResponseToolCall.Arguments? = nil,
+        output: ResponseToolOutput.Payload? = nil,
+        encryptedContent: String? = nil,
         metadata: [String: AnyCodable]? = nil,
         refusal: ResponseRefusal? = nil,
         summary: [AnyCodable]? = nil
@@ -350,6 +411,11 @@ public struct ResponseOutput: Codable, Sendable, Equatable {
         self.role = role
         self.content = content
         self.status = status
+        self.callId = callId
+        self.name = name
+        self.arguments = arguments
+        self.output = output
+        self.encryptedContent = encryptedContent
         self.metadata = metadata
         self.refusal = refusal
         self.summary = summary
@@ -360,6 +426,11 @@ public struct ResponseOutput: Codable, Sendable, Equatable {
         role: MessageRole,
         content: [ResponseContentBlock],
         status: ResponseItemStatus,
+        callId: String? = nil,
+        name: String? = nil,
+        arguments: ResponseToolCall.Arguments? = nil,
+        output: ResponseToolOutput.Payload? = nil,
+        encryptedContent: String? = nil,
         metadata: [String: AnyCodable]? = nil,
         refusal: ResponseRefusal? = nil
     ) {
@@ -369,6 +440,11 @@ public struct ResponseOutput: Codable, Sendable, Equatable {
             role: role,
             content: content,
             status: status,
+            callId: callId,
+            name: name,
+            arguments: arguments,
+            output: output,
+            encryptedContent: encryptedContent,
             metadata: metadata,
             refusal: refusal,
             summary: nil
@@ -381,6 +457,11 @@ public struct ResponseOutput: Codable, Sendable, Equatable {
         case role
         case content
         case status
+        case callId
+        case name
+        case arguments
+        case output
+        case encryptedContent
         case metadata
         case refusal
         case summary
@@ -419,8 +500,53 @@ public struct ResponseOutput: Codable, Sendable, Equatable {
             } else {
                 self.content = []
             }
+            self.encryptedContent = try container.decodeIfPresent(String.self, forKey: .encryptedContent)
             self.role = try container.decodeIfPresent(MessageRole.self, forKey: .role)
             self.status = try container.decodeIfPresent(ResponseItemStatus.self, forKey: .status) ?? .completed
+            self.callId = nil
+            self.name = nil
+            self.arguments = nil
+            self.output = nil
+        case .functionCall:
+            for key in [CodingKeys.callId, CodingKeys.name, CodingKeys.arguments, CodingKeys.status] where !container.contains(key) {
+                throw DecodingError.keyNotFound(
+                    key,
+                    DecodingError.Context(codingPath: container.codingPath, debugDescription: "`\(key.stringValue)` is required for function_call items.")
+                )
+            }
+            self.callId = try container.decode(String.self, forKey: .callId)
+            self.name = try container.decode(String.self, forKey: .name)
+            self.arguments = try container.decode(ResponseToolCall.Arguments.self, forKey: .arguments)
+            self.status = try container.decode(ResponseItemStatus.self, forKey: .status)
+            self.output = nil
+            if container.contains(.content) {
+                self.content = try container.decode([ResponseContentBlock].self, forKey: .content)
+            } else {
+                self.content = []
+            }
+            self.role = try container.decodeIfPresent(MessageRole.self, forKey: .role)
+            self.summary = try container.decodeIfPresent([AnyCodable].self, forKey: .summary)
+            self.encryptedContent = try container.decodeIfPresent(String.self, forKey: .encryptedContent)
+        case .functionCallOutput:
+            for key in [CodingKeys.callId, CodingKeys.output, CodingKeys.status] where !container.contains(key) {
+                throw DecodingError.keyNotFound(
+                    key,
+                    DecodingError.Context(codingPath: container.codingPath, debugDescription: "`\(key.stringValue)` is required for function_call_output items.")
+                )
+            }
+            self.callId = try container.decode(String.self, forKey: .callId)
+            self.output = try container.decode(ResponseToolOutput.Payload.self, forKey: .output)
+            self.status = try container.decode(ResponseItemStatus.self, forKey: .status)
+            self.name = nil
+            self.arguments = nil
+            if container.contains(.content) {
+                self.content = try container.decode([ResponseContentBlock].self, forKey: .content)
+            } else {
+                self.content = []
+            }
+            self.role = try container.decodeIfPresent(MessageRole.self, forKey: .role)
+            self.summary = try container.decodeIfPresent([AnyCodable].self, forKey: .summary)
+            self.encryptedContent = try container.decodeIfPresent(String.self, forKey: .encryptedContent)
         default:
             guard container.contains(.status) else {
                 throw DecodingError.keyNotFound(
@@ -452,6 +578,11 @@ public struct ResponseOutput: Codable, Sendable, Equatable {
                 self.role = try container.decodeIfPresent(MessageRole.self, forKey: .role)
             }
             self.summary = try container.decodeIfPresent([AnyCodable].self, forKey: .summary)
+            self.encryptedContent = try container.decodeIfPresent(String.self, forKey: .encryptedContent)
+            self.callId = try container.decodeIfPresent(String.self, forKey: .callId)
+            self.name = try container.decodeIfPresent(String.self, forKey: .name)
+            self.arguments = try container.decodeIfPresent(ResponseToolCall.Arguments.self, forKey: .arguments)
+            self.output = try container.decodeIfPresent(ResponseToolOutput.Payload.self, forKey: .output)
         }
 
         self.metadata = try container.decodeIfPresent([String: AnyCodable].self, forKey: .metadata)
@@ -462,16 +593,13 @@ public struct ResponseOutput: Codable, Sendable, Equatable {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(id, forKey: .id)
         try container.encode(type, forKey: .type)
-        if type != .reasoning {
-            try container.encodeIfPresent(role, forKey: .role)
-        }
-        if type == .reasoning {
+        switch type {
+        case .reasoning:
             // Open Responses Reference: ReasoningBody
             // - `summary` is required and must be an array (not null)
             // - `content` is optional; if present it must be an array (not null)
             // - ReasoningBody does NOT include `role`, `status`, or `tool_choice`
 
-            // Encode required `summary` as InputTextContent[]
             let summaryItems: [[String: AnyCodable]]
             if let summary, !summary.isEmpty {
                 summaryItems = summary.compactMap { part in
@@ -487,7 +615,6 @@ public struct ResponseOutput: Codable, Sendable, Equatable {
             }
             try container.encode(summaryItems, forKey: .summary)
 
-            // Encode optional `content` as InputTextContent[] only when non-empty
             if !content.isEmpty {
                 let contentItems: [[String: AnyCodable]] = content.compactMap { block in
                     guard let text = block.text else { return nil }
@@ -498,18 +625,51 @@ public struct ResponseOutput: Codable, Sendable, Equatable {
                 }
                 try container.encode(contentItems, forKey: .content)
             }
-        } else {
-            try container.encode(content, forKey: .content)
-        }
-        if type != .reasoning {
+            try container.encodeIfPresent(encryptedContent, forKey: .encryptedContent)
+
+        case .functionCall:
+            guard let callId, let name, let arguments else {
+                throw EncodingError.invalidValue(
+                    self,
+                    EncodingError.Context(
+                        codingPath: encoder.codingPath,
+                        debugDescription: "`call_id`, `name`, and `arguments` are required for function_call items."
+                    )
+                )
+            }
+            try container.encode(callId, forKey: .callId)
+            try container.encode(name, forKey: .name)
+            try container.encode(arguments, forKey: .arguments)
             try container.encode(status, forKey: .status)
+
+        case .functionCallOutput:
+            guard let callId, let output else {
+                throw EncodingError.invalidValue(
+                    self,
+                    EncodingError.Context(
+                        codingPath: encoder.codingPath,
+                        debugDescription: "`call_id` and `output` are required for function_call_output items."
+                    )
+                )
+            }
+            try container.encode(callId, forKey: .callId)
+            try container.encode(output, forKey: .output)
+            try container.encode(status, forKey: .status)
+
+        default:
+            try container.encodeIfPresent(role, forKey: .role)
+            try container.encode(content, forKey: .content)
+            try container.encode(status, forKey: .status)
+            try container.encodeIfPresent(summary, forKey: .summary)
+            try container.encodeIfPresent(encryptedContent, forKey: .encryptedContent)
+            try container.encodeIfPresent(callId, forKey: .callId)
+            try container.encodeIfPresent(name, forKey: .name)
+            try container.encodeIfPresent(arguments, forKey: .arguments)
+            try container.encodeIfPresent(output, forKey: .output)
         }
+
         try container.encodeIfPresent(metadata, forKey: .metadata)
         try container.encodeIfPresent(refusal, forKey: .refusal)
-        // For reasoning items, `summary` is handled above (required). For other item types, keep it optional.
-        if type != .reasoning {
-            try container.encodeIfPresent(summary, forKey: .summary)
-        }
         // ReasoningBody does NOT include tool_choice at the item level.
     }
 }
@@ -572,6 +732,42 @@ public extension ResponseOutput {
         status: ResponseItemStatus = .completed
     ) -> ResponseOutput {
         return ResponseOutput.reasoning(id: id, summaryText: text, status: status)
+    }
+
+    static func functionCall(
+        id: String = "call_\(UUID().uuidString)",
+        callId: String,
+        name: String,
+        arguments: ResponseToolCall.Arguments,
+        status: ResponseItemStatus = .completed
+    ) -> ResponseOutput {
+        ResponseOutput(
+            id: id,
+            type: .functionCall,
+            role: nil,
+            content: [],
+            status: status,
+            callId: callId,
+            name: name,
+            arguments: arguments
+        )
+    }
+
+    static func functionCallOutput(
+        id: String = "call_output_\(UUID().uuidString)",
+        callId: String,
+        output: ResponseToolOutput.Payload,
+        status: ResponseItemStatus = .completed
+    ) -> ResponseOutput {
+        ResponseOutput(
+            id: id,
+            type: .functionCallOutput,
+            role: nil,
+            content: [],
+            status: status,
+            callId: callId,
+            output: output
+        )
     }
 }
 

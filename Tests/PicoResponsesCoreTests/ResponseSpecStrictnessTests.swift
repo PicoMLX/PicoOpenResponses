@@ -180,6 +180,29 @@ private func baseResponseObject(
     #expect(response.metadata["nested"]?.dictionaryValue?["id"]?.stringValue == "meta_1")
 }
 
+@Test func responseReasoningEncodingIncludesNulls() throws {
+    let reasoning = ResponseReasoning()
+    let data = try ResponsesJSONCoding.makeEncoder().encode(reasoning)
+    let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+    #expect(json?["effort"] is NSNull)
+    #expect(json?["summary"] is NSNull)
+}
+
+@Test func responseReasoningDecodingRequiresKeys() throws {
+    let decoder = ResponsesJSONCoding.makeDecoder()
+    let missingPayload = try JSONSerialization.data(withJSONObject: [:])
+    var didThrow = false
+    do {
+        _ = try decoder.decode(ResponseReasoning.self, from: missingPayload)
+    } catch {
+        didThrow = true
+    }
+    #expect(didThrow)
+
+    let nullPayload = try JSONSerialization.data(withJSONObject: ["effort": NSNull(), "summary": NSNull()])
+    _ = try decoder.decode(ResponseReasoning.self, from: nullPayload)
+}
+
 @Test func responseIncompleteDetailsEncodesReason() throws {
     let response = ResponseObject.incomplete(
         id: "resp_incomplete",
@@ -230,6 +253,78 @@ private func baseResponseObject(
     #expect(error? ["message"] as? String == "Too many requests")
 }
 
+@Test func responseErrorEncodingRequiresCodeAndMessage() throws {
+    var didThrow = false
+    do {
+        _ = try ResponsesJSONCoding.makeEncoder().encode(ResponseError())
+    } catch {
+        didThrow = true
+    }
+    #expect(didThrow)
+}
+
+@Test func responseErrorDecodingRequiresCodeAndMessage() throws {
+    let decoder = ResponsesJSONCoding.makeDecoder()
+    let missingCode = try JSONSerialization.data(withJSONObject: ["message": "failed"])
+    let missingMessage = try JSONSerialization.data(withJSONObject: ["code": "server_error"])
+
+    for payload in [missingCode, missingMessage] {
+        var didThrow = false
+        do {
+            _ = try decoder.decode(ResponseError.self, from: payload)
+        } catch {
+            didThrow = true
+        }
+        #expect(didThrow)
+    }
+}
+
+@Test func responseIncompleteDetailsDecodingRequiresReason() throws {
+    let decoder = ResponsesJSONCoding.makeDecoder()
+    let payload = try JSONSerialization.data(withJSONObject: ["type": "length"])
+    var didThrow = false
+    do {
+        _ = try decoder.decode(ResponseIncompleteDetails.self, from: payload)
+    } catch {
+        didThrow = true
+    }
+    #expect(didThrow)
+}
+
+@Test func responseIncompleteDetailsEncodingRequiresReason() throws {
+    var didThrow = false
+    do {
+        _ = try ResponsesJSONCoding.makeEncoder().encode(ResponseIncompleteDetails())
+    } catch {
+        didThrow = true
+    }
+    #expect(didThrow)
+}
+
+@Test func responseToolDefinitionEncodingIncludesRequiredKeys() throws {
+    let tool = ResponseToolDefinition(name: "weather")
+    let data = try ResponsesJSONCoding.makeEncoder().encode(tool)
+    let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+
+    #expect(json? ["type"] as? String == "function")
+    #expect(json? ["name"] as? String == "weather")
+    #expect(json? ["description"] is NSNull)
+    #expect(json? ["parameters"] is NSNull)
+    #expect(json? ["strict"] as? Bool == true)
+}
+
+@Test func responseToolDefinitionDecodingRequiresKeys() throws {
+    let decoder = ResponsesJSONCoding.makeDecoder()
+    let payload = try JSONSerialization.data(withJSONObject: ["type": "function", "name": "weather"])
+    var didThrow = false
+    do {
+        _ = try decoder.decode(ResponseToolDefinition.self, from: payload)
+    } catch {
+        didThrow = true
+    }
+    #expect(didThrow)
+}
+
 @Test func responseOutputReasoningEncodingOmitsRoleAndStatus() throws {
     let output = ResponseOutput.reasoning(id: "rsn_1", summaryText: "Summary text")
     let data = try ResponsesJSONCoding.makeEncoder().encode(output)
@@ -242,6 +337,100 @@ private func baseResponseObject(
     let summary = json? ["summary"] as? [[String: Any]]
     #expect(summary?.first? ["type"] as? String == "input_text")
     #expect(summary?.first? ["text"] as? String == "Summary text")
+}
+
+@Test func responseOutputFunctionCallDecodingRequiresFields() throws {
+    let base: [String: Any] = [
+        "id": "item_call",
+        "type": "function_call",
+        "call_id": "call_1",
+        "name": "lookup",
+        "arguments": "{\"query\":\"hi\"}",
+        "status": "completed"
+    ]
+
+    let decoder = ResponsesJSONCoding.makeDecoder()
+    let data = try JSONSerialization.data(withJSONObject: base)
+    let output = try decoder.decode(ResponseOutput.self, from: data)
+    #expect(output.callId == "call_1")
+    #expect(output.name == "lookup")
+    #expect(output.arguments?.dictionaryValue?["query"]?.stringValue == "hi")
+
+    for key in ["call_id", "name", "arguments", "status"] {
+        var payload = base
+        payload.removeValue(forKey: key)
+        let missing = try JSONSerialization.data(withJSONObject: payload)
+        var didThrow = false
+        do {
+            _ = try decoder.decode(ResponseOutput.self, from: missing)
+        } catch {
+            didThrow = true
+        }
+        #expect(didThrow)
+    }
+}
+
+@Test func responseOutputFunctionCallEncodingIncludesRequiredFields() throws {
+    let output = ResponseOutput.functionCall(
+        id: "item_call",
+        callId: "call_1",
+        name: "lookup",
+        arguments: ResponseToolCall.Arguments(json: ["query": AnyCodable("hi")])
+    )
+    let data = try ResponsesJSONCoding.makeEncoder().encode(output)
+    let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+    #expect(json? ["type"] as? String == "function_call")
+    #expect(json? ["call_id"] as? String == "call_1")
+    #expect(json? ["name"] as? String == "lookup")
+    #expect(json? ["arguments"] as? String != nil)
+    #expect(json? ["status"] as? String == "completed")
+}
+
+@Test func responseOutputFunctionCallOutputDecodingRequiresFields() throws {
+    let base: [String: Any] = [
+        "id": "item_out",
+        "type": "function_call_output",
+        "call_id": "call_1",
+        "output": "{\"ok\":true}",
+        "status": "completed"
+    ]
+
+    let decoder = ResponsesJSONCoding.makeDecoder()
+    let data = try JSONSerialization.data(withJSONObject: base)
+    let output = try decoder.decode(ResponseOutput.self, from: data)
+    #expect(output.callId == "call_1")
+    if case .string(let value)? = output.output {
+        #expect(value == "{\"ok\":true}")
+    } else {
+        Issue.record("Expected string output payload.")
+    }
+
+    for key in ["call_id", "output", "status"] {
+        var payload = base
+        payload.removeValue(forKey: key)
+        let missing = try JSONSerialization.data(withJSONObject: payload)
+        var didThrow = false
+        do {
+            _ = try decoder.decode(ResponseOutput.self, from: missing)
+        } catch {
+            didThrow = true
+        }
+        #expect(didThrow)
+    }
+}
+
+@Test func responseOutputFunctionCallOutputEncodingIncludesRequiredFields() throws {
+    let output = ResponseOutput.functionCallOutput(
+        id: "item_out",
+        callId: "call_1",
+        output: .string("{\"ok\":true}")
+    )
+    let data = try ResponsesJSONCoding.makeEncoder().encode(output)
+    let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+    #expect(json? ["type"] as? String == "function_call_output")
+    #expect(json? ["call_id"] as? String == "call_1")
+    #expect(json? ["output"] as? String == "{\"ok\":true}")
+    #expect(json? ["status"] as? String == "completed")
 }
 
 @Test func responseOutputMessageDecodingRequiresFields() throws {
@@ -321,6 +510,12 @@ private func baseResponseObject(
     #expect(block.type == .outputText)
     #expect(block.annotations?.isEmpty == true)
     #expect(block.data["logprobs"]?.arrayValue?.isEmpty == true)
+}
+
+@Test func responseContentBlockImageURLDefaultsDetail() {
+    let url = URL(string: "https://example.com/image.png")!
+    let block = ResponseContentBlock.imageURL(url)
+    #expect(block.data["detail"]?.stringValue == "auto")
 }
 
 @Test func responseContentBlockRoundTripsVariousTypes() throws {

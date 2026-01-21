@@ -410,7 +410,16 @@ public struct ResponseToolDefinition: Codable, Sendable, Equatable {
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.type = try container.decodeIfPresent(String.self, forKey: .type) ?? "function"
+        for key in [CodingKeys.type, CodingKeys.description, CodingKeys.inputSchema, CodingKeys.strict] where !container.contains(key) {
+            throw DecodingError.keyNotFound(
+                key,
+                DecodingError.Context(
+                    codingPath: container.codingPath,
+                    debugDescription: "`\(key.stringValue)` is required."
+                )
+            )
+        }
+        self.type = try container.decode(String.self, forKey: .type)
         self.name = try container.decode(String.self, forKey: .name)
         self.description = try container.decodeIfPresent(String.self, forKey: .description)
         self.inputSchema = try container.decodeIfPresent(JSONSchema.self, forKey: .inputSchema)
@@ -447,9 +456,9 @@ public struct ResponseToolDefinition: Codable, Sendable, Equatable {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(type, forKey: .type)
         try container.encode(name, forKey: .name)
-        try container.encodeIfPresent(description, forKey: .description)
-        try container.encodeIfPresent(inputSchema, forKey: .inputSchema)
-        try container.encodeIfPresent(strict, forKey: .strict)
+        try container.encodeOrNull(description, forKey: .description)
+        try container.encodeOrNull(inputSchema, forKey: .inputSchema)
+        try container.encode(strict ?? true, forKey: .strict)
 
         if let mcpServer {
             try container.encode(mcpServer, forKey: .server)
