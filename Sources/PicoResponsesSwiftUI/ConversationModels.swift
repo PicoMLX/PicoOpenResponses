@@ -49,6 +49,7 @@ public struct ConversationMessage: Identifiable, Equatable, Sendable {
         case user
         case assistant
         case system
+        case developer
         case tool
     }
 

@@ -68,7 +68,7 @@ public struct ConversationRequestBuilder: Sendable {
             instructions: instructions,
 //            modalities: nil,
 //            responseFormat: nil,
-            audio: nil,
+//            audio: nil,
             text: nil,
             metadata: metadata,
             temperature: temperature,
@@ -185,7 +185,7 @@ public actor LiveConversationService: ConversationService {
             reasoningPhase: .none,
             toolCallPhase: .none,
             lastResponseId: response.id,
-            conversationId: response.conversationId,
+            conversationId: nil,
             createdAt: response.createdAt,
             metadata: response.metadata
         )
@@ -293,7 +293,10 @@ enum ConversationStreamReducer {
             snapshot.fileSearchPhase = mapFileSearchPhase(type: type, event: event, current: snapshot.fileSearchPhase)
         } else if type.hasPrefix("response.reasoning") || type.hasPrefix("response.reasoning_") {
             snapshot.reasoningPhase = mapReasoningPhase(type: type, event: event, current: snapshot.reasoningPhase)
-        } else if type.hasPrefix("response.tool_call") || type.hasPrefix("response.code_interpreter_call") || type.hasPrefix("response.function_call") || type.hasPrefix("response.mcp_call") {
+        } else if type.hasPrefix("response.code_interpreter_call")
+            || type.hasPrefix("response.function_call")
+            || type.hasPrefix("response.mcp_call")
+            || type.hasPrefix("response.custom_tool_call") {
             snapshot.toolCallPhase = mapToolCallPhase(type: type, event: event, current: snapshot.toolCallPhase)
         } else if type.hasPrefix("response.output_item") {
             updateOutputItemStates(type: type, event: event, snapshot: &snapshot)
@@ -423,7 +426,7 @@ enum ConversationStreamReducer {
 
         if itemType.hasPrefix("reasoning") {
             snapshot.reasoningPhase = mapReasoningPhase(type: type, event: event, item: item, current: snapshot.reasoningPhase)
-        } else if itemType == "tool_call" || itemType == "code_interpreter_call" {
+        } else if itemType == "function_call" || itemType == "code_interpreter_call" {
             snapshot.toolCallPhase = mapToolCallPhase(type: type, dataSource: event.data, item: item, current: snapshot.toolCallPhase)
         }
     }
@@ -458,9 +461,6 @@ enum ConversationStreamReducer {
 private extension ConversationStreamReducer {
     static func applyMetadata(from response: ResponseObject, to snapshot: inout ConversationStateSnapshot) {
         snapshot.lastResponseId = response.id
-        if let conversationId = response.conversationId, !conversationId.isEmpty {
-            snapshot.conversationId = conversationId
-        }
         snapshot.createdAt = max(snapshot.createdAt, response.createdAt)
         snapshot.metadata = response.metadata
     }
@@ -475,6 +475,8 @@ private extension ConversationMessage.Role {
             return .assistant
         case .system:
             return .system
+        case .developer:
+            return .developer
         case .tool:
             return .tool
         }
@@ -497,8 +499,10 @@ private extension ConversationMessage.Role {
             self = .user
         case .assistant:
             self = .assistant
-        case .system, .developer:
+        case .system:
             self = .system
+        case .developer:
+            self = .developer
         case .tool:
             self = .tool
         }

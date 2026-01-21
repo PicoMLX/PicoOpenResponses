@@ -214,64 +214,6 @@ public struct ResponseCreateRequest: Codable, Sendable, Equatable {
         self.previousResponseId = previousResponseId
     }
 
-    public init(
-        model: String? = nil,
-        input: [ResponseInputItem],
-        instructions: String? = nil,
-        text: [String: AnyCodable]? = nil,
-        metadata: [String: AnyCodable]? = nil,
-        temperature: Float? = nil,
-        topP: Float? = nil,
-        stream: Bool? = nil,
-        frequencyPenalty: Float? = nil,
-        presencePenalty: Float? = nil,
-        topLogprobs: Int? = nil,
-        store: Bool? = nil,
-        background: Bool? = nil,
-        serviceTier: String? = nil,
-        maxOutputTokens: Int? = nil,
-        reasoning: ResponseReasoningOptions? = nil,
-        parallelToolCalls: Bool? = nil,
-        tools: [ResponseTool]? = nil,
-        toolChoice: ToolChoice? = nil,
-        previousResponseId: String? = nil
-    ) {
-        let converted: TextParam? = text.map { legacy in
-            // If the caller passed an empty object, still emit a compliant format.
-            if legacy.isEmpty {
-                return TextParam(format: .text(TextResponseFormat()), verbosity: nil)
-            }
-            let param = TextParam.fromLegacy(legacy)
-            // If legacy omitted format entirely, default to text.
-            if param.format == nil {
-                return TextParam(format: .text(TextResponseFormat()), verbosity: param.verbosity)
-            }
-            return param
-        }
-
-        self.init(
-            model: model,
-            input: input,
-            instructions: instructions,
-            text: converted,
-            metadata: metadata,
-            temperature: temperature,
-            topP: topP,
-            stream: stream,
-            frequencyPenalty: frequencyPenalty,
-            presencePenalty: presencePenalty,
-            topLogprobs: topLogprobs,
-            store: store,
-            background: background,
-            serviceTier: serviceTier,
-            maxOutputTokens: maxOutputTokens,
-            reasoning: reasoning,
-            parallelToolCalls: parallelToolCalls,
-            tools: tools,
-            toolChoice: toolChoice,
-            previousResponseId: previousResponseId
-        )
-    }
 }
 
 // MARK: - ResponseCreateRequest Validation
