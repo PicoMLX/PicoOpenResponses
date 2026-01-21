@@ -66,6 +66,16 @@ public enum ResponseReasoningSummary: String, Codable, Sendable, Equatable {
     case auto
 }
 
+public struct ResponseReasoning: Codable, Sendable, Equatable {
+    public let effort: ResponseReasoningEffort?
+    public let summary: ResponseReasoningSummary?
+
+    public init(effort: ResponseReasoningEffort? = nil, summary: ResponseReasoningSummary? = nil) {
+        self.effort = effort
+        self.summary = summary
+    }
+}
+
 public struct ResponseReasoningParam: Codable, Sendable, Equatable {
     public let effort: ResponseReasoningEffort?
     public let summary: ResponseReasoningSummary?
@@ -110,17 +120,14 @@ public enum ResponseContentType: String, Codable, Sendable {
     case inputText = "input_text"
     case outputText = "output_text"
     case refusal
-    case imageUrl = "image_url"
-    case imageFile = "image_file"
+    case inputImage = "input_image"
+    case inputFile = "input_file"
     case inputAudio = "input_audio"
     case outputAudio = "output_audio"
-    case toolCall = "tool_call"
-    case toolOutput = "tool_output"
     // Open Responses uses `reasoning_text` and `summary_text` as content-part types.
     // Keep `reasoning` out of generated payloads; it is not a valid content-part type.
     case reasoningText = "reasoning_text"
     case summaryText = "summary_text"
-    case json
 }
 
 public struct ResponseContentBlock: Codable, Sendable, Equatable {
@@ -165,20 +172,6 @@ public struct ResponseContentBlock: Codable, Sendable, Equatable {
         data["annotations"]?.arrayValue
     }
 
-    public var toolCall: ResponseToolCall? {
-        guard type == .toolCall else {
-            return nil
-        }
-        return data.decode(ResponseToolCall.self)
-    }
-
-    public var toolOutput: ResponseToolOutput? {
-        guard type == .toolOutput else {
-            return nil
-        }
-        return data.decode(ResponseToolOutput.self)
-    }
-
     public func decode<T: Decodable>(_ decodableType: T.Type, decoder: JSONDecoder = ResponsesJSONCoding.makeDecoder()) -> T? {
         data.decode(decodableType, using: decoder)
     }
@@ -205,12 +198,12 @@ public extension ResponseContentBlock {
         )
     }
 
-    static func imageURL(_ url: URL) -> ResponseContentBlock {
-        ResponseContentBlock(type: .imageUrl, data: ["image_url": AnyCodable(["url": url.absoluteString])])
-    }
-
-    static func json(_ object: [String: Any]) -> ResponseContentBlock {
-        ResponseContentBlock(type: .json, data: ["json": AnyCodable(object)])
+    static func imageURL(_ url: URL, detail: String? = nil) -> ResponseContentBlock {
+        var data: [String: AnyCodable] = ["image_url": AnyCodable(url.absoluteString)]
+        if let detail {
+            data["detail"] = AnyCodable(detail)
+        }
+        return ResponseContentBlock(type: .inputImage, data: data)
     }
 
     static func reasoning(_ value: String) -> ResponseContentBlock {

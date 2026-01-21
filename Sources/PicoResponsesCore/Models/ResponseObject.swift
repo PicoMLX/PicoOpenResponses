@@ -281,9 +281,9 @@ public enum TextFormatField: Codable, Sendable, Equatable {
 /// Response-side text configuration.
 public struct TextField: Codable, Sendable, Equatable {
     public let format: TextFormatField
-    public let verbosity: VerbosityEnum
+    public let verbosity: VerbosityEnum?
 
-    public init(format: TextFormatField = .text(TextResponseFormat()), verbosity: VerbosityEnum = .medium) {
+    public init(format: TextFormatField = .text(TextResponseFormat()), verbosity: VerbosityEnum? = .medium) {
         self.format = format
         self.verbosity = verbosity
     }
@@ -509,7 +509,7 @@ public struct ResponseObject: Codable, Sendable, Equatable {
     public let incompleteDetails: ResponseIncompleteDetails?
     public let usage: ResponseUsage?
     public let instructions: String?
-    public let reasoning: ResponseReasoningOptions?
+    public let reasoning: ResponseReasoning?
     public let maxOutputTokens: Int?
     public let maxToolCalls: Int?
     public let previousResponseId: String?
@@ -542,7 +542,7 @@ public struct ResponseObject: Codable, Sendable, Equatable {
         incompleteDetails: ResponseIncompleteDetails? = nil,
         usage: ResponseUsage? = nil,
         instructions: String? = nil,
-        reasoning: ResponseReasoningOptions? = nil,
+        reasoning: ResponseReasoning? = nil,
         maxOutputTokens: Int? = nil,
         maxToolCalls: Int? = nil,
         previousResponseId: String? = nil,

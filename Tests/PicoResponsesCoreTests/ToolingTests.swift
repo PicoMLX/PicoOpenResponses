@@ -86,9 +86,11 @@ import Testing
 
 @Test func responseToolCallDecodesObjectArguments() throws {
     let payload: [String: Any] = [
+        "id": "item_456",
         "call_id": "call_456",
         "name": "lookup",
         "arguments": ["query": "hello"],
+        "status": "completed",
         "type": "function_call"
     ]
 
@@ -108,8 +110,11 @@ import Testing
 
 @Test func responseToolOutputEncodesJSONString() throws {
     let payload: [String: Any] = [
+        "id": "item_123",
         "call_id": "call_123",
-        "output": ["status": "ok", "count": 2]
+        "output": "{\"status\":\"ok\",\"count\":2}",
+        "status": "completed",
+        "type": "function_call_output"
     ]
 
     let data = try JSONSerialization.data(withJSONObject: payload)
@@ -136,8 +141,10 @@ import Testing
     ]
 
     let output = ResponseToolOutput(
+        itemId: "item_parts",
         callId: "call_parts",
-        payload: .array(parts)
+        payload: .array(parts),
+        status: "completed"
     )
 
     let encoded = try ResponsesJSONCoding.makeEncoder().encode(output)
