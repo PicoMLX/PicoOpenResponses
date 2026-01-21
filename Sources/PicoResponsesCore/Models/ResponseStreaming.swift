@@ -42,7 +42,12 @@ public struct ResponseDelta: Sendable, Equatable {
     }
 }
 
-public struct ResponseStreamEvent: Sendable, Equatable {
+public protocol ResponseStreamProtocol: Encodable, Sendable {
+    var type: String { get }
+    var sequenceNumber: Int? { get }
+}
+
+public struct ResponseStreamEvent: Sendable, Equatable, ResponseStreamProtocol {
     public let type: String
     public let data: [String: AnyCodable]
 
@@ -213,6 +218,19 @@ public struct ResponseStreamEvent: Sendable, Equatable {
 
     public var contentIndex: Int? {
         data["content_index"]?.intValue
+    }
+}
+
+// MARK: - Encodable
+
+extension ResponseStreamEvent: Encodable {
+    public func encode(to encoder: Encoder) throws {
+        var payload: [String: AnyCodable] = ["type": AnyCodable(type)]
+        for (key, value) in data {
+            payload[key] = value
+        }
+        var container = encoder.singleValueContainer()
+        try container.encode(payload)
     }
 }
 
