@@ -1981,6 +1981,7 @@ public extension ResponseStreamEvent {
                 "item_id": AnyCodable(itemId),
                 "output_index": AnyCodable(outputIndex),
                 "content_index": AnyCodable(contentIndex),
+                "logprobs": AnyCodable([]),
                 "text": AnyCodable(text),
                 "sequence_number": AnyCodable(sequenceNumber)
             ]
