@@ -292,32 +292,6 @@ public struct TextField: Codable, Sendable, Equatable {
         TextField(format: .text(TextResponseFormat()), verbosity: .medium)
     }
 
-    /// Best-effort conversion from legacy `[String: AnyCodable]`.
-//    public static func fromLegacy(_ legacy: [String: AnyCodable]) -> TextField {
-//        let verbosity = legacy["verbosity"]?.stringValue.flatMap(VerbosityEnum.init(rawValue:)) ?? .medium
-//
-//        if let fmt = legacy["format"]?.dictionaryValue,
-//           let type = fmt["type"]?.stringValue {
-//            switch type {
-//            case "json_object":
-//                return TextField(format: .jsonObject(JsonObjectResponseFormat()), verbosity: verbosity)
-//            case "json_schema":
-//                // Response-side json_schema requires name/description/schema/strict; fall back to text if missing.
-//                if let name = fmt["name"]?.stringValue,
-//                   let description = fmt["description"]?.stringValue,
-//                   let schema = fmt["schema"],
-//                   let strict = fmt["strict"]?.boolValue {
-//                    return TextField(format: .jsonSchema(JsonSchemaResponseFormat(name: name, description: description, schema: schema, strict: strict)), verbosity: verbosity)
-//                }
-//                return TextField(format: .text(TextResponseFormat()), verbosity: verbosity)
-//            default:
-//                return TextField(format: .text(TextResponseFormat()), verbosity: verbosity)
-//            }
-//        }
-//
-//        // Legacy empty object => compliant default (includes format + verbosity).
-//        return TextField.default
-//    }
 }
 
 // MARK: - Outputs & Responses
@@ -627,34 +601,34 @@ public struct ResponseObject: Codable, Sendable, Equatable {
     enum CodingKeys: String, CodingKey {
         case id
         case object
-        case createdAt = "created_at"
-        case completedAt = "completed_at"
+        case createdAt
+        case completedAt
         case model
         case status
-        case incompleteDetails = "incomplete_details"
+        case incompleteDetails
         case usage
         case instructions
         case reasoning
-        case maxOutputTokens = "max_output_tokens"
-        case maxToolCalls = "max_tool_calls"
-        case previousResponseId = "previous_response_id"
-        case safetyIdentifier = "safety_identifier"
-        case promptCacheKey = "prompt_cache_key"
+        case maxOutputTokens
+        case maxToolCalls
+        case previousResponseId
+        case safetyIdentifier
+        case promptCacheKey
         case tools
-        case toolChoice = "tool_choice"
+        case toolChoice
         case truncation
-        case parallelToolCalls = "parallel_tool_calls"
+        case parallelToolCalls
         case text
         case output
         case metadata
         case temperature
-        case topP = "top_p"
-        case frequencyPenalty = "frequency_penalty"
-        case presencePenalty = "presence_penalty"
-        case topLogprobs = "top_logprobs"
+        case topP
+        case frequencyPenalty
+        case presencePenalty
+        case topLogprobs
         case store
         case background
-        case serviceTier = "service_tier"
+        case serviceTier
         case error
     }
 }

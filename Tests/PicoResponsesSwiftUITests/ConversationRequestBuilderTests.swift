@@ -36,8 +36,12 @@ final class ConversationRequestBuilderTests: XCTestCase {
 
         let request = builder.makeRequest(from: history, previousResponseId: "resp_456")
 
-        XCTAssertEqual(request.input.count, 1)
-        guard let first = request.input.first else {
+        guard case let .items(items) = request.input else {
+            XCTFail("Expected array input")
+            return
+        }
+        XCTAssertEqual(items.count, 1)
+        guard let first = items.first else {
             XCTFail("Missing input item")
             return
         }
@@ -63,6 +67,10 @@ final class ConversationRequestBuilderTests: XCTestCase {
 
         let request = builder.makeRequest(from: history, previousResponseId: nil)
 
-        XCTAssertEqual(request.input.count, 3)
+        guard case let .items(items) = request.input else {
+            XCTFail("Expected array input")
+            return
+        }
+        XCTAssertEqual(items.count, 3)
     }
 }

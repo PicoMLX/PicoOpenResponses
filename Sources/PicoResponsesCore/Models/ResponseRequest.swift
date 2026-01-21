@@ -63,27 +63,7 @@ public struct TextParam: Codable, Sendable, Equatable {
         self.verbosity = verbosity
     }
 
-    /// Best-effort conversion from legacy `[String: AnyCodable]`.
-    public static func fromLegacy(_ legacy: [String: AnyCodable]) -> TextParam {
-        let verbosity = legacy["verbosity"]?.stringValue.flatMap(VerbosityEnum.init(rawValue:))
-
-        var format: TextFormatParam? = nil
-        if let fmt = legacy["format"]?.dictionaryValue,
-           let type = fmt["type"]?.stringValue {
-            if type == "json_schema" {
-                // Parse schema format if present; otherwise keep an empty param object.
-                let description = fmt["description"]?.stringValue
-                let name = fmt["name"]?.stringValue
-                let schema = fmt["schema"]
-                let strict = fmt["strict"]?.boolValue
-                format = .jsonSchema(JsonSchemaResponseFormatParam(description: description, name: name, schema: schema, strict: strict))
-            } else {
-                format = .text(TextResponseFormat())
-            }
-        }
-
-        return TextParam(format: format, verbosity: verbosity)
-    }
+    // Intentionally no legacy helpers here; request payloads are spec-first.
 }
 
 public struct ResponseMessageInput: Codable, Sendable, Equatable {
@@ -140,6 +120,37 @@ public enum ResponseInputItem: Codable, Sendable, Equatable {
     }
 }
 
+public enum ResponseInput: Codable, Sendable, Equatable {
+    case text(String)
+    case items([ResponseInputItem])
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        if let text = try? container.decode(String.self) {
+            self = .text(text)
+            return
+        }
+        if let items = try? container.decode([ResponseInputItem].self) {
+            self = .items(items)
+            return
+        }
+        throw DecodingError.dataCorruptedError(
+            in: container,
+            debugDescription: "Expected input to be a string or an array of items."
+        )
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        switch self {
+        case .text(let value):
+            try container.encode(value)
+        case .items(let items):
+            try container.encode(items)
+        }
+    }
+}
+
 public extension ResponseInputItem {
     static func message(role: MessageRole, content: [ResponseContentBlock], metadata: [String: AnyCodable]? = nil) -> ResponseInputItem {
         .message(ResponseMessageInput(role: role, content: content, metadata: metadata))
@@ -150,13 +161,15 @@ public extension ResponseInputItem {
 
 public struct ResponseCreateRequest: Codable, Sendable, Equatable {
     public let model: String?
-    public let input: [ResponseInputItem]
+    public let input: ResponseInput
+    public let include: [ResponseInclude]?
     public let instructions: String?
     public let text: TextParam?
     public let metadata: [String: AnyCodable]?
     public let temperature: Float?
     public let topP: Float?
     public let stream: Bool?
+    public let streamOptions: ResponseStreamOptions?
     public let frequencyPenalty: Float?
     public let presencePenalty: Float?
     public let topLogprobs: Int?
@@ -164,21 +177,27 @@ public struct ResponseCreateRequest: Codable, Sendable, Equatable {
     public let background: Bool?
     public let serviceTier: String?
     public let maxOutputTokens: Int?
-    public let reasoning: ResponseReasoningOptions?
+    public let maxToolCalls: Int?
+    public let reasoning: ResponseReasoningParam?
+    public let truncation: ResponseTruncationEnum?
+    public let safetyIdentifier: String?
+    public let promptCacheKey: String?
     public let parallelToolCalls: Bool?
     public let tools: [ResponseTool]?
-    public let toolChoice: ToolChoice?
+    public let toolChoice: ToolChoiceParam?
     public let previousResponseId: String?
 
     public init(
         model: String? = nil,
-        input: [ResponseInputItem],
+        input: ResponseInput,
+        include: [ResponseInclude]? = nil,
         instructions: String? = nil,
         text: TextParam? = nil,
         metadata: [String: AnyCodable]? = nil,
         temperature: Float? = nil,
         topP: Float? = nil,
         stream: Bool? = nil,
+        streamOptions: ResponseStreamOptions? = nil,
         frequencyPenalty: Float? = nil,
         presencePenalty: Float? = nil,
         topLogprobs: Int? = nil,
@@ -186,20 +205,26 @@ public struct ResponseCreateRequest: Codable, Sendable, Equatable {
         background: Bool? = nil,
         serviceTier: String? = nil,
         maxOutputTokens: Int? = nil,
-        reasoning: ResponseReasoningOptions? = nil,
+        maxToolCalls: Int? = nil,
+        reasoning: ResponseReasoningParam? = nil,
+        truncation: ResponseTruncationEnum? = nil,
+        safetyIdentifier: String? = nil,
+        promptCacheKey: String? = nil,
         parallelToolCalls: Bool? = nil,
         tools: [ResponseTool]? = nil,
-        toolChoice: ToolChoice? = nil,
+        toolChoice: ToolChoiceParam? = nil,
         previousResponseId: String? = nil
     ) {
         self.model = model
         self.input = input
+        self.include = include
         self.instructions = instructions
         self.text = text
         self.metadata = metadata
         self.temperature = temperature
         self.topP = topP
         self.stream = stream
+        self.streamOptions = streamOptions
         self.frequencyPenalty = frequencyPenalty
         self.presencePenalty = presencePenalty
         self.topLogprobs = topLogprobs
@@ -207,21 +232,147 @@ public struct ResponseCreateRequest: Codable, Sendable, Equatable {
         self.background = background
         self.serviceTier = serviceTier
         self.maxOutputTokens = maxOutputTokens
+        self.maxToolCalls = maxToolCalls
         self.reasoning = reasoning
+        self.truncation = truncation
+        self.safetyIdentifier = safetyIdentifier
+        self.promptCacheKey = promptCacheKey
         self.parallelToolCalls = parallelToolCalls
         self.tools = tools
         self.toolChoice = toolChoice
         self.previousResponseId = previousResponseId
     }
 
+    public init(
+        model: String? = nil,
+        input: [ResponseInputItem],
+        include: [ResponseInclude]? = nil,
+        instructions: String? = nil,
+        text: TextParam? = nil,
+        metadata: [String: AnyCodable]? = nil,
+        temperature: Float? = nil,
+        topP: Float? = nil,
+        stream: Bool? = nil,
+        streamOptions: ResponseStreamOptions? = nil,
+        frequencyPenalty: Float? = nil,
+        presencePenalty: Float? = nil,
+        topLogprobs: Int? = nil,
+        store: Bool? = nil,
+        background: Bool? = nil,
+        serviceTier: String? = nil,
+        maxOutputTokens: Int? = nil,
+        maxToolCalls: Int? = nil,
+        reasoning: ResponseReasoningParam? = nil,
+        truncation: ResponseTruncationEnum? = nil,
+        safetyIdentifier: String? = nil,
+        promptCacheKey: String? = nil,
+        parallelToolCalls: Bool? = nil,
+        tools: [ResponseTool]? = nil,
+        toolChoice: ToolChoiceParam? = nil,
+        previousResponseId: String? = nil
+    ) {
+        self.init(
+            model: model,
+            input: .items(input),
+            include: include,
+            instructions: instructions,
+            text: text,
+            metadata: metadata,
+            temperature: temperature,
+            topP: topP,
+            stream: stream,
+            streamOptions: streamOptions,
+            frequencyPenalty: frequencyPenalty,
+            presencePenalty: presencePenalty,
+            topLogprobs: topLogprobs,
+            store: store,
+            background: background,
+            serviceTier: serviceTier,
+            maxOutputTokens: maxOutputTokens,
+            maxToolCalls: maxToolCalls,
+            reasoning: reasoning,
+            truncation: truncation,
+            safetyIdentifier: safetyIdentifier,
+            promptCacheKey: promptCacheKey,
+            parallelToolCalls: parallelToolCalls,
+            tools: tools,
+            toolChoice: toolChoice,
+            previousResponseId: previousResponseId
+        )
+    }
+
+    public init(
+        model: String? = nil,
+        input: String,
+        include: [ResponseInclude]? = nil,
+        instructions: String? = nil,
+        text: TextParam? = nil,
+        metadata: [String: AnyCodable]? = nil,
+        temperature: Float? = nil,
+        topP: Float? = nil,
+        stream: Bool? = nil,
+        streamOptions: ResponseStreamOptions? = nil,
+        frequencyPenalty: Float? = nil,
+        presencePenalty: Float? = nil,
+        topLogprobs: Int? = nil,
+        store: Bool? = nil,
+        background: Bool? = nil,
+        serviceTier: String? = nil,
+        maxOutputTokens: Int? = nil,
+        maxToolCalls: Int? = nil,
+        reasoning: ResponseReasoningParam? = nil,
+        truncation: ResponseTruncationEnum? = nil,
+        safetyIdentifier: String? = nil,
+        promptCacheKey: String? = nil,
+        parallelToolCalls: Bool? = nil,
+        tools: [ResponseTool]? = nil,
+        toolChoice: ToolChoiceParam? = nil,
+        previousResponseId: String? = nil
+    ) {
+        self.init(
+            model: model,
+            input: .text(input),
+            include: include,
+            instructions: instructions,
+            text: text,
+            metadata: metadata,
+            temperature: temperature,
+            topP: topP,
+            stream: stream,
+            streamOptions: streamOptions,
+            frequencyPenalty: frequencyPenalty,
+            presencePenalty: presencePenalty,
+            topLogprobs: topLogprobs,
+            store: store,
+            background: background,
+            serviceTier: serviceTier,
+            maxOutputTokens: maxOutputTokens,
+            maxToolCalls: maxToolCalls,
+            reasoning: reasoning,
+            truncation: truncation,
+            safetyIdentifier: safetyIdentifier,
+            promptCacheKey: promptCacheKey,
+            parallelToolCalls: parallelToolCalls,
+            tools: tools,
+            toolChoice: toolChoice,
+            previousResponseId: previousResponseId
+        )
+    }
 }
 
 // MARK: - ResponseCreateRequest Validation
 
 public extension ResponseCreateRequest {
     func validate() throws {
-        if input.isEmpty {
-            throw PicoResponsesError.validationError("input cannot be empty")
+        switch input {
+        case .text(let value):
+            if value.isEmpty {
+                throw PicoResponsesError.validationError("input cannot be empty")
+            }
+        case .items(let items):
+            if items.isEmpty {
+                throw PicoResponsesError.validationError("input cannot be empty")
+            }
         }
 
         if let text, text.format == nil {
@@ -244,8 +395,16 @@ public extension ResponseCreateRequest {
             throw PicoResponsesError.validationError("presencePenalty must be between -2 and 2")
         }
 
-        if let maxOutputTokens, maxOutputTokens < 1 {
-            throw PicoResponsesError.validationError("maxOutputTokens must be at least 1")
+        if let maxOutputTokens, maxOutputTokens < 16 {
+            throw PicoResponsesError.validationError("maxOutputTokens must be at least 16")
+        }
+
+        if let maxToolCalls, maxToolCalls < 1 {
+            throw PicoResponsesError.validationError("maxToolCalls must be at least 1")
+        }
+
+        if let topLogprobs, (topLogprobs < 0 || topLogprobs > 20) {
+            throw PicoResponsesError.validationError("topLogprobs must be between 0 and 20")
         }
     }
 }

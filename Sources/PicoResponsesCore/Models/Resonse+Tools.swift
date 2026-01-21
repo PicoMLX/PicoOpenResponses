@@ -727,7 +727,7 @@ public struct ResponseToolCall: Codable, Sendable, Equatable, Identifiable {
 
     enum CodingKeys: String, CodingKey {
         case itemId = "id"
-        case callId = "call_id"
+        case callId
         case type
         case name
         case arguments
@@ -955,7 +955,7 @@ public struct ResponseToolOutput: Codable, Sendable, Equatable {
 
     enum CodingKeys: String, CodingKey {
         case itemId = "id"
-        case callId = "call_id"
+        case callId
         case type
         case output
         case status

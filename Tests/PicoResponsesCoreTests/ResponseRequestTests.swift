@@ -25,7 +25,7 @@ import Testing
         background: false,
         serviceTier: "default",
         maxOutputTokens: 256,
-        reasoning: ResponseReasoningOptions(effort: "medium"),
+        reasoning: ResponseReasoningParam(effort: .medium),
         parallelToolCalls: false,
         tools: [
             .function(ResponseToolDefinition(

@@ -52,8 +52,45 @@ public struct ResponseReasoningOptions: Codable, Sendable, Equatable {
     }
 }
 
+public enum ResponseReasoningEffort: String, Codable, Sendable, Equatable {
+    case none
+    case low
+    case medium
+    case high
+    case xhigh
+}
+
+public enum ResponseReasoningSummary: String, Codable, Sendable, Equatable {
+    case concise
+    case detailed
+    case auto
+}
+
+public struct ResponseReasoningParam: Codable, Sendable, Equatable {
+    public let effort: ResponseReasoningEffort?
+    public let summary: ResponseReasoningSummary?
+
+    public init(effort: ResponseReasoningEffort? = nil, summary: ResponseReasoningSummary? = nil) {
+        self.effort = effort
+        self.summary = summary
+    }
+}
+
 public enum ResponseTruncationEnum: String, Codable, Sendable, Equatable {
     case auto, disabled
+}
+
+public enum ResponseInclude: String, Codable, Sendable, Equatable {
+    case reasoningEncryptedContent = "reasoning.encrypted_content"
+    case messageOutputTextLogprobs = "message.output_text.logprobs"
+}
+
+public struct ResponseStreamOptions: Codable, Sendable, Equatable {
+    public let includeObfuscation: Bool?
+
+    public init(includeObfuscation: Bool? = nil) {
+        self.includeObfuscation = includeObfuscation
+    }
 }
 
 public struct ResponseTruncationStrategy: Codable, Sendable, Equatable {

@@ -39,13 +39,26 @@ final class ConversationStreamReducerTests: XCTestCase {
             createdAt: Date(timeIntervalSince1970: 0),
             model: "gpt-4.1",
             status: .completed,
+            tools: [],
+            truncation: .disabled,
+            parallelToolCalls: false,
+            text: .default,
             output: [
                 ResponseOutput(
                     id: "out_1",
                     role: .assistant,
-                    content: [.outputText("final answer")]
+                    content: [.outputText("final answer")],
+                    status: .completed
                 )
-            ]
+            ],
+            temperature: 1,
+            topP: 1,
+            frequencyPenalty: 0,
+            presencePenalty: 0,
+            topLogprobs: 0,
+            store: false,
+            background: false,
+            serviceTier: "default"
         )
 
         let responseDictionary = try Self.makeAnyCodableDictionary(response)
@@ -178,7 +191,7 @@ final class ConversationStreamReducerTests: XCTestCase {
         var snapshot = ConversationStateSnapshot()
         let toolAddItem: [String: Any] = [
             "id": "tc_1",
-            "type": "tool_call",
+            "type": "function_call",
             "name": "browser",
             "tool_name": "web-search"
         ]
@@ -195,7 +208,7 @@ final class ConversationStreamReducerTests: XCTestCase {
 
         let toolDoneItem: [String: Any] = [
             "id": "tc_1",
-            "type": "tool_call",
+            "type": "function_call",
             "name": "browser",
             "tool_name": "web-search"
         ]
@@ -239,14 +252,14 @@ final class ConversationStreamReducerTests: XCTestCase {
         }
     }
 
-    private static func makeAnyCodableDictionary<T: Encodable>(_ value: T) throws -> [String: AnyCodable] {
-        let encoder = PicoJSONCoding.makeEncoder()
+    private static func makeAnyCodableDictionary<T: Encodable>(_ value: T) throws -> [String: Any] {
+        let encoder = ResponsesJSONCoding.makeEncoder()
         let data = try encoder.encode(value)
         let json = try JSONSerialization.jsonObject(with: data)
         guard let dictionary = json as? [String: Any] else {
             return [:]
         }
-        return dictionary.mapValues(AnyCodable.init)
+        return dictionary
     }
 
     private static func makeEventData(_ value: [String: Any]) -> [String: AnyCodable] {
