@@ -363,17 +363,77 @@ public struct TextField: Codable, Sendable, Equatable {
 
 // MARK: - Outputs & Responses
 
-public enum ResponseOutputType: String, Codable, Sendable {
+public enum ResponseOutputType: Codable, Sendable, Equatable {
     case message
     case reasoning
-    case functionCall = "function_call"
-    case functionCallOutput = "function_call_output"
-    case fileSearchCall = "file_search_call"
-    case webSearchCall = "web_search_call"
-    case codeInterpreterCall = "code_interpreter_call"
-    case mcpCall = "mcp_call"
-    case mcpListTools = "mcp_list_tools"
-    case imageGenerationCall = "image_generation_call"
+    case functionCall
+    case functionCallOutput
+    case fileSearchCall
+    case webSearchCall
+    case codeInterpreterCall
+    case mcpCall
+    case mcpListTools
+    case imageGenerationCall
+    case custom(String)
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let raw = try container.decode(String.self)
+        switch raw {
+        case "message":
+            self = .message
+        case "reasoning":
+            self = .reasoning
+        case "function_call":
+            self = .functionCall
+        case "function_call_output":
+            self = .functionCallOutput
+        case "file_search_call":
+            self = .fileSearchCall
+        case "web_search_call":
+            self = .webSearchCall
+        case "code_interpreter_call":
+            self = .codeInterpreterCall
+        case "mcp_call":
+            self = .mcpCall
+        case "mcp_list_tools":
+            self = .mcpListTools
+        case "image_generation_call":
+            self = .imageGenerationCall
+        default:
+            self = .custom(raw)
+        }
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        let raw: String
+        switch self {
+        case .message:
+            raw = "message"
+        case .reasoning:
+            raw = "reasoning"
+        case .functionCall:
+            raw = "function_call"
+        case .functionCallOutput:
+            raw = "function_call_output"
+        case .fileSearchCall:
+            raw = "file_search_call"
+        case .webSearchCall:
+            raw = "web_search_call"
+        case .codeInterpreterCall:
+            raw = "code_interpreter_call"
+        case .mcpCall:
+            raw = "mcp_call"
+        case .mcpListTools:
+            raw = "mcp_list_tools"
+        case .imageGenerationCall:
+            raw = "image_generation_call"
+        case .custom(let value):
+            raw = value
+        }
+        try container.encode(raw)
+    }
 }
 
 public struct ResponseOutput: Codable, Sendable, Equatable {
