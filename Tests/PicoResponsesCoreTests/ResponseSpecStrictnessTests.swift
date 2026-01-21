@@ -313,16 +313,16 @@ private func baseResponseObject(
     #expect(json? ["strict"] as? Bool == true)
 }
 
-@Test func responseToolDefinitionDecodingRequiresKeys() throws {
+@Test func responseToolDefinitionDecodingAllowsMissingOptionalFields() throws {
     let decoder = ResponsesJSONCoding.makeDecoder()
     let payload = try JSONSerialization.data(withJSONObject: ["type": "function", "name": "weather"])
-    var didThrow = false
-    do {
-        _ = try decoder.decode(ResponseToolDefinition.self, from: payload)
-    } catch {
-        didThrow = true
-    }
-    #expect(didThrow)
+    let definition = try decoder.decode(ResponseToolDefinition.self, from: payload)
+
+    #expect(definition.type == "function")
+    #expect(definition.name == "weather")
+    #expect(definition.description == nil)
+    #expect(definition.inputSchema == nil)
+    #expect(definition.strict == nil)
 }
 
 @Test func responseOutputReasoningEncodingOmitsRoleAndStatus() throws {
