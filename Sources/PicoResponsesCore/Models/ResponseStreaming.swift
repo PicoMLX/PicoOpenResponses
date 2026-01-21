@@ -81,7 +81,11 @@ public struct ResponseStreamEvent: Sendable, Equatable {
         case responseFunctionCallArgumentsDelta = "response.function_call_arguments.delta"
         case responseFunctionCallArgumentsDone = "response.function_call_arguments.done"
 
-        // Reasoning text
+        // Reasoning (Open Responses)
+        case responseReasoningDelta = "response.reasoning.delta"
+        case responseReasoningDone = "response.reasoning.done"
+
+        // Reasoning text (OpenAI extension)
         case responseReasoningTextDelta = "response.reasoning_text.delta"
         case responseReasoningTextDone = "response.reasoning_text.done"
 
@@ -161,7 +165,7 @@ public struct ResponseStreamEvent: Sendable, Equatable {
     }
 
     public var reasoningTextDelta: ResponseDelta? {
-        guard kind == .responseReasoningTextDelta else { return nil }
+        guard kind == .responseReasoningTextDelta || kind == .responseReasoningDelta else { return nil }
         return delta
     }
 
@@ -387,7 +391,7 @@ public extension ResponseStreamEvent {
         )
     }
 
-    // MARK: - Reasoning Text Events
+    // MARK: - Reasoning Events
 
     static func reasoningTextDelta(
         itemId: String,
@@ -397,7 +401,7 @@ public extension ResponseStreamEvent {
         sequenceNumber: Int
     ) -> ResponseStreamEvent {
         ResponseStreamEvent(
-            kind: .responseReasoningTextDelta,
+            kind: .responseReasoningDelta,
             data: [
                 "item_id": AnyCodable(itemId),
                 "output_index": AnyCodable(outputIndex),
@@ -416,7 +420,7 @@ public extension ResponseStreamEvent {
         sequenceNumber: Int
     ) -> ResponseStreamEvent {
         ResponseStreamEvent(
-            kind: .responseReasoningTextDone,
+            kind: .responseReasoningDone,
             data: [
                 "item_id": AnyCodable(itemId),
                 "output_index": AnyCodable(outputIndex),
