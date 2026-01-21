@@ -410,15 +410,6 @@ public struct ResponseToolDefinition: Codable, Sendable, Equatable {
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        for key in [CodingKeys.type, CodingKeys.description, CodingKeys.inputSchema, CodingKeys.strict] where !container.contains(key) {
-            throw DecodingError.keyNotFound(
-                key,
-                DecodingError.Context(
-                    codingPath: container.codingPath,
-                    debugDescription: "`\(key.stringValue)` is required."
-                )
-            )
-        }
         self.type = try container.decode(String.self, forKey: .type)
         self.name = try container.decode(String.self, forKey: .name)
         self.description = try container.decodeIfPresent(String.self, forKey: .description)
