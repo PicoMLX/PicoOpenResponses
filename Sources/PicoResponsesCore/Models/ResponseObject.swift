@@ -53,9 +53,12 @@ public struct ResponseStatusDetails: Codable, Sendable, Equatable {
     public let raw: [String: AnyCodable]
 
     public init(type: String? = nil, reason: String? = nil, raw: [String: AnyCodable] = [:]) {
+        var merged = raw
+        if let type { merged["type"] = AnyCodable(type) }
+        if let reason { merged["reason"] = AnyCodable(reason) }
         self.type = type
         self.reason = reason
-        self.raw = raw
+        self.raw = merged
     }
 
     public init(from decoder: Decoder) throws {
@@ -78,9 +81,12 @@ public struct ResponseIncompleteDetails: Codable, Sendable, Equatable {
     public let raw: [String: AnyCodable]
 
     public init(reason: String? = nil, type: String? = nil, raw: [String: AnyCodable] = [:]) {
+        var merged = raw
+        if let reason { merged["reason"] = AnyCodable(reason) }
+        if let type { merged["type"] = AnyCodable(type) }
         self.reason = reason
         self.type = type
-        self.raw = raw
+        self.raw = merged
     }
 
     public init(from decoder: Decoder) throws {
@@ -103,9 +109,12 @@ public struct ResponseRefusal: Codable, Sendable, Equatable {
     public let raw: [String: AnyCodable]
 
     public init(reason: String? = nil, message: String? = nil, raw: [String: AnyCodable] = [:]) {
+        var merged = raw
+        if let reason { merged["reason"] = AnyCodable(reason) }
+        if let message { merged["message"] = AnyCodable(message) }
         self.reason = reason
         self.message = message
-        self.raw = raw
+        self.raw = merged
     }
 
     public init(from decoder: Decoder) throws {
@@ -129,10 +138,14 @@ public struct ResponseError: Codable, Sendable, Equatable {
     public let raw: [String: AnyCodable]
 
     public init(code: String? = nil, message: String? = nil, param: String? = nil, raw: [String: AnyCodable] = [:]) {
+        var merged = raw
+        if let code { merged["code"] = AnyCodable(code) }
+        if let message { merged["message"] = AnyCodable(message) }
+        if let param { merged["param"] = AnyCodable(param) }
         self.code = code
         self.message = message
         self.param = param
-        self.raw = raw
+        self.raw = merged
     }
 
     public init(from decoder: Decoder) throws {
@@ -157,10 +170,14 @@ public struct ResponseToolInvocationError: Codable, Sendable, Equatable {
     public let raw: [String: AnyCodable]
 
     public init(code: String? = nil, message: String? = nil, type: String? = nil, raw: [String: AnyCodable] = [:]) {
+        var merged = raw
+        if let code { merged["code"] = AnyCodable(code) }
+        if let message { merged["message"] = AnyCodable(message) }
+        if let type { merged["type"] = AnyCodable(type) }
         self.code = code
         self.message = message
         self.type = type
-        self.raw = raw
+        self.raw = merged
     }
 
     public init(from decoder: Decoder) throws {
@@ -372,14 +389,73 @@ public struct ResponseOutput: Codable, Sendable, Equatable {
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
+        guard container.contains(.id) else {
+            throw DecodingError.keyNotFound(
+                CodingKeys.id,
+                DecodingError.Context(codingPath: container.codingPath, debugDescription: "`id` is required.")
+            )
+        }
+        guard container.contains(.type) else {
+            throw DecodingError.keyNotFound(
+                CodingKeys.type,
+                DecodingError.Context(codingPath: container.codingPath, debugDescription: "`type` is required.")
+            )
+        }
+
         self.id = try container.decode(String.self, forKey: .id)
-        self.type = try container.decodeIfPresent(ResponseOutputType.self, forKey: .type) ?? .message
-        self.role = try container.decodeIfPresent(MessageRole.self, forKey: .role)
-        self.content = try container.decodeIfPresent([ResponseContentBlock].self, forKey: .content) ?? []
-        self.status = try container.decodeIfPresent(ResponseItemStatus.self, forKey: .status) ?? .completed
+        self.type = try container.decode(ResponseOutputType.self, forKey: .type)
+
+        switch type {
+        case .reasoning:
+            guard container.contains(.summary) else {
+                throw DecodingError.keyNotFound(
+                    CodingKeys.summary,
+                    DecodingError.Context(codingPath: container.codingPath, debugDescription: "`summary` is required for reasoning items.")
+                )
+            }
+            self.summary = try container.decode([AnyCodable].self, forKey: .summary)
+            if container.contains(.content) {
+                self.content = try container.decode([ResponseContentBlock].self, forKey: .content)
+            } else {
+                self.content = []
+            }
+            self.role = try container.decodeIfPresent(MessageRole.self, forKey: .role)
+            self.status = try container.decodeIfPresent(ResponseItemStatus.self, forKey: .status) ?? .completed
+        default:
+            guard container.contains(.status) else {
+                throw DecodingError.keyNotFound(
+                    CodingKeys.status,
+                    DecodingError.Context(codingPath: container.codingPath, debugDescription: "`status` is required for output items.")
+                )
+            }
+            self.status = try container.decode(ResponseItemStatus.self, forKey: .status)
+            if type == .message {
+                guard container.contains(.content) else {
+                    throw DecodingError.keyNotFound(
+                        CodingKeys.content,
+                        DecodingError.Context(codingPath: container.codingPath, debugDescription: "`content` is required for message items.")
+                    )
+                }
+                guard container.contains(.role) else {
+                    throw DecodingError.keyNotFound(
+                        CodingKeys.role,
+                        DecodingError.Context(codingPath: container.codingPath, debugDescription: "`role` is required for message items.")
+                    )
+                }
+                self.content = try container.decode([ResponseContentBlock].self, forKey: .content)
+                self.role = try container.decode(MessageRole.self, forKey: .role)
+            } else if container.contains(.content) {
+                self.content = try container.decode([ResponseContentBlock].self, forKey: .content)
+                self.role = try container.decodeIfPresent(MessageRole.self, forKey: .role)
+            } else {
+                self.content = []
+                self.role = try container.decodeIfPresent(MessageRole.self, forKey: .role)
+            }
+            self.summary = try container.decodeIfPresent([AnyCodable].self, forKey: .summary)
+        }
+
         self.metadata = try container.decodeIfPresent([String: AnyCodable].self, forKey: .metadata)
         self.refusal = try container.decodeIfPresent(ResponseRefusal.self, forKey: .refusal)
-        self.summary = try container.decodeIfPresent([AnyCodable].self, forKey: .summary)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -630,6 +706,85 @@ public struct ResponseObject: Codable, Sendable, Equatable {
         case background
         case serviceTier
         case error
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let requiredKeys: [CodingKeys] = [
+            .id,
+            .object,
+            .createdAt,
+            .completedAt,
+            .status,
+            .incompleteDetails,
+            .model,
+            .previousResponseId,
+            .instructions,
+            .output,
+            .error,
+            .tools,
+            .toolChoice,
+            .truncation,
+            .parallelToolCalls,
+            .text,
+            .topP,
+            .presencePenalty,
+            .frequencyPenalty,
+            .topLogprobs,
+            .temperature,
+            .reasoning,
+            .usage,
+            .maxOutputTokens,
+            .maxToolCalls,
+            .store,
+            .background,
+            .serviceTier,
+            .metadata,
+            .safetyIdentifier,
+            .promptCacheKey
+        ]
+
+        for key in requiredKeys where !container.contains(key) {
+            throw DecodingError.keyNotFound(
+                key,
+                DecodingError.Context(
+                    codingPath: container.codingPath,
+                    debugDescription: "`\(key.stringValue)` is required."
+                )
+            )
+        }
+
+        self.id = try container.decode(String.self, forKey: .id)
+        self.object = try container.decode(String.self, forKey: .object)
+        self.createdAt = try container.decode(Date.self, forKey: .createdAt)
+        self.completedAt = try container.decodeIfPresent(Date.self, forKey: .completedAt)
+        self.model = try container.decode(String.self, forKey: .model)
+        self.status = try container.decode(ResponseStatus.self, forKey: .status)
+        self.incompleteDetails = try container.decodeIfPresent(ResponseIncompleteDetails.self, forKey: .incompleteDetails)
+        self.usage = try container.decodeIfPresent(ResponseUsage.self, forKey: .usage)
+        self.instructions = try container.decodeIfPresent(String.self, forKey: .instructions)
+        self.reasoning = try container.decodeIfPresent(ResponseReasoning.self, forKey: .reasoning)
+        self.maxOutputTokens = try container.decodeIfPresent(Int.self, forKey: .maxOutputTokens)
+        self.maxToolCalls = try container.decodeIfPresent(Int.self, forKey: .maxToolCalls)
+        self.previousResponseId = try container.decodeIfPresent(String.self, forKey: .previousResponseId)
+        self.safetyIdentifier = try container.decodeIfPresent(String.self, forKey: .safetyIdentifier)
+        self.promptCacheKey = try container.decodeIfPresent(String.self, forKey: .promptCacheKey)
+        self.tools = try container.decode([ResponseTool].self, forKey: .tools)
+        self.toolChoice = try container.decode(ToolChoice.self, forKey: .toolChoice)
+        self.truncation = try container.decode(ResponseTruncationEnum.self, forKey: .truncation)
+        self.parallelToolCalls = try container.decode(Bool.self, forKey: .parallelToolCalls)
+        self.text = try container.decode(TextField.self, forKey: .text)
+        self.output = try container.decode([ResponseOutput].self, forKey: .output)
+        self.metadata = try container.decode([String: AnyCodable].self, forKey: .metadata)
+        self.temperature = try container.decode(Float.self, forKey: .temperature)
+        self.topP = try container.decode(Float.self, forKey: .topP)
+        self.frequencyPenalty = try container.decode(Float.self, forKey: .frequencyPenalty)
+        self.presencePenalty = try container.decode(Float.self, forKey: .presencePenalty)
+        self.topLogprobs = try container.decode(Int.self, forKey: .topLogprobs)
+        self.store = try container.decode(Bool.self, forKey: .store)
+        self.background = try container.decode(Bool.self, forKey: .background)
+        self.serviceTier = try container.decode(String.self, forKey: .serviceTier)
+        self.error = try container.decodeIfPresent(ResponseError.self, forKey: .error)
     }
 }
 
