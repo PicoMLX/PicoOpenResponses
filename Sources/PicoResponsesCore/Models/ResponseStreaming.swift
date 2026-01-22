@@ -336,54 +336,44 @@ public extension ResponseStreamEvent {
 
     // MARK: - Response Lifecycle Events
 
-    static func created(response: ResponseObject, sequenceNumber: Int) -> ResponseStreamEvent {
-        ResponseStreamEvent(
-            kind: .responseCreated,
-            data: [
-                "response": AnyCodable(encodeResponse(response)),
-                "sequence_number": AnyCodable(sequenceNumber)
-            ]
-        )
+    static func created(response: ResponseObject, sequenceNumber: Int? = nil) -> ResponseStreamEvent {
+        var data: [String: AnyCodable] = [
+            "response": AnyCodable(encodeResponse(response))
+        ]
+        addSequenceNumber(sequenceNumber, to: &data)
+        return ResponseStreamEvent(kind: .responseCreated, data: data)
     }
 
-    static func inProgress(response: ResponseObject, sequenceNumber: Int) -> ResponseStreamEvent {
-        ResponseStreamEvent(
-            kind: .responseInProgress,
-            data: [
-                "response": AnyCodable(encodeResponse(response)),
-                "sequence_number": AnyCodable(sequenceNumber)
-            ]
-        )
+    static func inProgress(response: ResponseObject, sequenceNumber: Int? = nil) -> ResponseStreamEvent {
+        var data: [String: AnyCodable] = [
+            "response": AnyCodable(encodeResponse(response))
+        ]
+        addSequenceNumber(sequenceNumber, to: &data)
+        return ResponseStreamEvent(kind: .responseInProgress, data: data)
     }
 
-    static func completed(response: ResponseObject, sequenceNumber: Int) -> ResponseStreamEvent {
-        ResponseStreamEvent(
-            kind: .responseCompleted,
-            data: [
-                "response": AnyCodable(encodeResponse(response)),
-                "sequence_number": AnyCodable(sequenceNumber)
-            ]
-        )
+    static func completed(response: ResponseObject, sequenceNumber: Int? = nil) -> ResponseStreamEvent {
+        var data: [String: AnyCodable] = [
+            "response": AnyCodable(encodeResponse(response))
+        ]
+        addSequenceNumber(sequenceNumber, to: &data)
+        return ResponseStreamEvent(kind: .responseCompleted, data: data)
     }
 
-    static func failed(response: ResponseObject, sequenceNumber: Int) -> ResponseStreamEvent {
-        ResponseStreamEvent(
-            kind: .responseFailed,
-            data: [
-                "response": AnyCodable(encodeResponse(response)),
-                "sequence_number": AnyCodable(sequenceNumber)
-            ]
-        )
+    static func failed(response: ResponseObject, sequenceNumber: Int? = nil) -> ResponseStreamEvent {
+        var data: [String: AnyCodable] = [
+            "response": AnyCodable(encodeResponse(response))
+        ]
+        addSequenceNumber(sequenceNumber, to: &data)
+        return ResponseStreamEvent(kind: .responseFailed, data: data)
     }
 
-    static func incomplete(response: ResponseObject, sequenceNumber: Int) -> ResponseStreamEvent {
-        ResponseStreamEvent(
-            kind: .responseIncomplete,
-            data: [
-                "response": AnyCodable(encodeResponse(response)),
-                "sequence_number": AnyCodable(sequenceNumber)
-            ]
-        )
+    static func incomplete(response: ResponseObject, sequenceNumber: Int? = nil) -> ResponseStreamEvent {
+        var data: [String: AnyCodable] = [
+            "response": AnyCodable(encodeResponse(response))
+        ]
+        addSequenceNumber(sequenceNumber, to: &data)
+        return ResponseStreamEvent(kind: .responseIncomplete, data: data)
     }
 
     // MARK: - Output Item Events
@@ -391,31 +381,27 @@ public extension ResponseStreamEvent {
     static func outputItemAdded(
         item: ResponseOutput,
         outputIndex: Int,
-        sequenceNumber: Int
+        sequenceNumber: Int? = nil
     ) -> ResponseStreamEvent {
-        ResponseStreamEvent(
-            kind: .responseOutputItemAdded,
-            data: [
-                "item": AnyCodable(encodeOutput(item)),
-                "output_index": AnyCodable(outputIndex),
-                "sequence_number": AnyCodable(sequenceNumber)
-            ]
-        )
+        var data: [String: AnyCodable] = [
+            "item": AnyCodable(encodeOutput(item)),
+            "output_index": AnyCodable(outputIndex)
+        ]
+        addSequenceNumber(sequenceNumber, to: &data)
+        return ResponseStreamEvent(kind: .responseOutputItemAdded, data: data)
     }
 
     static func outputItemDone(
         item: ResponseOutput,
         outputIndex: Int,
-        sequenceNumber: Int
+        sequenceNumber: Int? = nil
     ) -> ResponseStreamEvent {
-        ResponseStreamEvent(
-            kind: .responseOutputItemDone,
-            data: [
-                "item": AnyCodable(encodeOutput(item)),
-                "output_index": AnyCodable(outputIndex),
-                "sequence_number": AnyCodable(sequenceNumber)
-            ]
-        )
+        var data: [String: AnyCodable] = [
+            "item": AnyCodable(encodeOutput(item)),
+            "output_index": AnyCodable(outputIndex)
+        ]
+        addSequenceNumber(sequenceNumber, to: &data)
+        return ResponseStreamEvent(kind: .responseOutputItemDone, data: data)
     }
 
     // MARK: - Content Part Events
@@ -425,18 +411,16 @@ public extension ResponseStreamEvent {
         outputIndex: Int,
         contentIndex: Int,
         part: ResponseContentBlock,
-        sequenceNumber: Int
+        sequenceNumber: Int? = nil
     ) -> ResponseStreamEvent {
-        ResponseStreamEvent(
-            kind: .responseContentPartAdded,
-            data: [
-                "item_id": AnyCodable(itemId),
-                "output_index": AnyCodable(outputIndex),
-                "content_index": AnyCodable(contentIndex),
-                "part": AnyCodable(part.data.jsonObject()),
-                "sequence_number": AnyCodable(sequenceNumber)
-            ]
-        )
+        var data: [String: AnyCodable] = [
+            "item_id": AnyCodable(itemId),
+            "output_index": AnyCodable(outputIndex),
+            "content_index": AnyCodable(contentIndex),
+            "part": AnyCodable(part.data.jsonObject())
+        ]
+        addSequenceNumber(sequenceNumber, to: &data)
+        return ResponseStreamEvent(kind: .responseContentPartAdded, data: data)
     }
 
     static func contentPartDone(
@@ -444,18 +428,16 @@ public extension ResponseStreamEvent {
         outputIndex: Int,
         contentIndex: Int,
         part: ResponseContentBlock,
-        sequenceNumber: Int
+        sequenceNumber: Int? = nil
     ) -> ResponseStreamEvent {
-        ResponseStreamEvent(
-            kind: .responseContentPartDone,
-            data: [
-                "item_id": AnyCodable(itemId),
-                "output_index": AnyCodable(outputIndex),
-                "content_index": AnyCodable(contentIndex),
-                "part": AnyCodable(part.data.jsonObject()),
-                "sequence_number": AnyCodable(sequenceNumber)
-            ]
-        )
+        var data: [String: AnyCodable] = [
+            "item_id": AnyCodable(itemId),
+            "output_index": AnyCodable(outputIndex),
+            "content_index": AnyCodable(contentIndex),
+            "part": AnyCodable(part.data.jsonObject())
+        ]
+        addSequenceNumber(sequenceNumber, to: &data)
+        return ResponseStreamEvent(kind: .responseContentPartDone, data: data)
     }
 
     // MARK: - Output Text Events
@@ -465,20 +447,18 @@ public extension ResponseStreamEvent {
         outputIndex: Int,
         contentIndex: Int,
         delta: String,
-        sequenceNumber: Int
+        sequenceNumber: Int? = nil
     ) -> ResponseStreamEvent {
-        ResponseStreamEvent(
-            kind: .responseOutputTextDelta,
-            data: [
-                "item_id": AnyCodable(itemId),
-                "output_index": AnyCodable(outputIndex),
-                "content_index": AnyCodable(contentIndex),
-                "logprobs": AnyCodable([]),
-                "obfuscation": AnyCodable(""),
-                "delta": AnyCodable(delta),
-                "sequence_number": AnyCodable(sequenceNumber)
-            ]
-        )
+        var data: [String: AnyCodable] = [
+            "item_id": AnyCodable(itemId),
+            "output_index": AnyCodable(outputIndex),
+            "content_index": AnyCodable(contentIndex),
+            "logprobs": AnyCodable([]),
+            "obfuscation": AnyCodable(""),
+            "delta": AnyCodable(delta)
+        ]
+        addSequenceNumber(sequenceNumber, to: &data)
+        return ResponseStreamEvent(kind: .responseOutputTextDelta, data: data)
     }
 
     static func outputTextDone(
@@ -486,19 +466,17 @@ public extension ResponseStreamEvent {
         outputIndex: Int,
         contentIndex: Int,
         text: String,
-        sequenceNumber: Int
+        sequenceNumber: Int? = nil
     ) -> ResponseStreamEvent {
-        ResponseStreamEvent(
-            kind: .responseOutputTextDone,
-            data: [
-                "item_id": AnyCodable(itemId),
-                "output_index": AnyCodable(outputIndex),
-                "content_index": AnyCodable(contentIndex),
-                "logprobs": AnyCodable([]),
-                "text": AnyCodable(text),
-                "sequence_number": AnyCodable(sequenceNumber)
-            ]
-        )
+        var data: [String: AnyCodable] = [
+            "item_id": AnyCodable(itemId),
+            "output_index": AnyCodable(outputIndex),
+            "content_index": AnyCodable(contentIndex),
+            "logprobs": AnyCodable([]),
+            "text": AnyCodable(text)
+        ]
+        addSequenceNumber(sequenceNumber, to: &data)
+        return ResponseStreamEvent(kind: .responseOutputTextDone, data: data)
     }
 
     // MARK: - Reasoning Events
@@ -508,18 +486,16 @@ public extension ResponseStreamEvent {
         outputIndex: Int,
         contentIndex: Int,
         delta: String,
-        sequenceNumber: Int
+        sequenceNumber: Int? = nil
     ) -> ResponseStreamEvent {
-        ResponseStreamEvent(
-            kind: .responseReasoningDelta,
-            data: [
-                "item_id": AnyCodable(itemId),
-                "output_index": AnyCodable(outputIndex),
-                "content_index": AnyCodable(contentIndex),
-                "delta": AnyCodable(delta),
-                "sequence_number": AnyCodable(sequenceNumber)
-            ]
-        )
+        var data: [String: AnyCodable] = [
+            "item_id": AnyCodable(itemId),
+            "output_index": AnyCodable(outputIndex),
+            "content_index": AnyCodable(contentIndex),
+            "delta": AnyCodable(delta)
+        ]
+        addSequenceNumber(sequenceNumber, to: &data)
+        return ResponseStreamEvent(kind: .responseReasoningDelta, data: data)
     }
 
     static func reasoningTextDone(
@@ -527,18 +503,16 @@ public extension ResponseStreamEvent {
         outputIndex: Int,
         contentIndex: Int,
         text: String,
-        sequenceNumber: Int
+        sequenceNumber: Int? = nil
     ) -> ResponseStreamEvent {
-        ResponseStreamEvent(
-            kind: .responseReasoningDone,
-            data: [
-                "item_id": AnyCodable(itemId),
-                "output_index": AnyCodable(outputIndex),
-                "content_index": AnyCodable(contentIndex),
-                "text": AnyCodable(text),
-                "sequence_number": AnyCodable(sequenceNumber)
-            ]
-        )
+        var data: [String: AnyCodable] = [
+            "item_id": AnyCodable(itemId),
+            "output_index": AnyCodable(outputIndex),
+            "content_index": AnyCodable(contentIndex),
+            "text": AnyCodable(text)
+        ]
+        addSequenceNumber(sequenceNumber, to: &data)
+        return ResponseStreamEvent(kind: .responseReasoningDone, data: data)
     }
 
     // MARK: - Function Call Events
@@ -547,17 +521,15 @@ public extension ResponseStreamEvent {
         itemId: String,
         outputIndex: Int,
         delta: String,
-        sequenceNumber: Int
+        sequenceNumber: Int? = nil
     ) -> ResponseStreamEvent {
-        ResponseStreamEvent(
-            kind: .responseFunctionCallArgumentsDelta,
-            data: [
-                "item_id": AnyCodable(itemId),
-                "output_index": AnyCodable(outputIndex),
-                "delta": AnyCodable(delta),
-                "sequence_number": AnyCodable(sequenceNumber)
-            ]
-        )
+        var data: [String: AnyCodable] = [
+            "item_id": AnyCodable(itemId),
+            "output_index": AnyCodable(outputIndex),
+            "delta": AnyCodable(delta)
+        ]
+        addSequenceNumber(sequenceNumber, to: &data)
+        return ResponseStreamEvent(kind: .responseFunctionCallArgumentsDelta, data: data)
     }
 
     static func functionCallArgumentsDone(
@@ -565,18 +537,16 @@ public extension ResponseStreamEvent {
         outputIndex: Int,
         name: String,
         arguments: String,
-        sequenceNumber: Int
+        sequenceNumber: Int? = nil
     ) -> ResponseStreamEvent {
-        ResponseStreamEvent(
-            kind: .responseFunctionCallArgumentsDone,
-            data: [
-                "item_id": AnyCodable(itemId),
-                "output_index": AnyCodable(outputIndex),
-                "name": AnyCodable(name),
-                "arguments": AnyCodable(arguments),
-                "sequence_number": AnyCodable(sequenceNumber)
-            ]
-        )
+        var data: [String: AnyCodable] = [
+            "item_id": AnyCodable(itemId),
+            "output_index": AnyCodable(outputIndex),
+            "name": AnyCodable(name),
+            "arguments": AnyCodable(arguments)
+        ]
+        addSequenceNumber(sequenceNumber, to: &data)
+        return ResponseStreamEvent(kind: .responseFunctionCallArgumentsDone, data: data)
     }
 
     // MARK: - Error Event
@@ -585,13 +555,13 @@ public extension ResponseStreamEvent {
         code: String,
         message: String,
         param: String? = nil,
-        sequenceNumber: Int
+        sequenceNumber: Int? = nil
     ) -> ResponseStreamEvent {
         var data: [String: AnyCodable] = [
             "code": AnyCodable(code),
-            "message": AnyCodable(message),
-            "sequence_number": AnyCodable(sequenceNumber)
+            "message": AnyCodable(message)
         ]
+        addSequenceNumber(sequenceNumber, to: &data)
         if let param {
             data["param"] = AnyCodable(param)
         }
@@ -646,5 +616,11 @@ public extension ResponseStreamEvent {
             return [:]
         }
         return dict
+    }
+
+    private static func addSequenceNumber(_ sequenceNumber: Int?, to data: inout [String: AnyCodable]) {
+        if let sequenceNumber {
+            data["sequence_number"] = AnyCodable(sequenceNumber)
+        }
     }
 }
