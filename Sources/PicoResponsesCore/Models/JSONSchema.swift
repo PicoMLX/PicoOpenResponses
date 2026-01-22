@@ -46,6 +46,19 @@ public struct AnyCodable: Codable, @unchecked Sendable, Equatable {
             unwrapped = wrapped.value
         }
         switch unwrapped {
+        case let number as NSNumber:
+            if CFGetTypeID(number) == CFBooleanGetTypeID() {
+                try container.encode(number.boolValue)
+            } else {
+                let doubleValue = number.doubleValue
+                if doubleValue.rounded() == doubleValue,
+                   doubleValue >= Double(Int.min),
+                   doubleValue <= Double(Int.max) {
+                    try container.encode(Int(doubleValue))
+                } else {
+                    try container.encode(doubleValue)
+                }
+            }
         case _ as NSNull:
             try container.encodeNil()
         case let bool as Bool:

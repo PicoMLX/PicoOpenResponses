@@ -234,6 +234,97 @@ extension ResponseStreamEvent: Encodable {
     }
 }
 
+// MARK: - Streaming Helpers
+
+public actor ResponseStreamSequencer: Sendable {
+    private var nextValue: Int
+
+    public init(startAt: Int = 0) {
+        self.nextValue = startAt
+    }
+
+    public func next() -> Int {
+        defer { nextValue += 1 }
+        return nextValue
+    }
+}
+
+public struct ResponseStreamEncoder: Sendable {
+    public init() {}
+
+    public func encodeString<E: ResponseStreamProtocol>(_ event: E, sequenceNumber: Int? = nil) -> String? {
+        guard let jsonString = encodeJSON(event, sequenceNumber: sequenceNumber) else { return nil }
+        return "event: \(event.type)\n" + "data: \(jsonString)\n\n"
+    }
+
+    public func encodeData<E: ResponseStreamProtocol>(_ event: E, sequenceNumber: Int? = nil) -> Data? {
+        encodeString(event, sequenceNumber: sequenceNumber)?.data(using: .utf8)
+    }
+
+    public func doneData() -> Data {
+        Data("data: [DONE]\n\n".utf8)
+    }
+
+    private func encodeJSON<E: ResponseStreamProtocol>(_ event: E, sequenceNumber: Int?) -> String? {
+        let encoder = ResponsesJSONCoding.makeEncoder()
+        guard let data = try? encoder.encode(event),
+              var dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return nil
+        }
+        if dict["type"] == nil {
+            dict["type"] = event.type
+        }
+        if dict["sequence_number"] == nil, let sequenceNumber {
+            dict["sequence_number"] = sequenceNumber
+        }
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: dict),
+              let jsonString = String(data: jsonData, encoding: .utf8) else {
+            return nil
+        }
+        return jsonString
+    }
+}
+
+public struct ResponseStreamEmitter: Sendable {
+    public let stream: AsyncStream<Data>
+
+    private let continuation: AsyncStream<Data>.Continuation
+    private let sequencer: ResponseStreamSequencer
+    private let encoder: ResponseStreamEncoder
+
+    public init(startAt: Int = 0, encoder: ResponseStreamEncoder = ResponseStreamEncoder()) {
+        var continuation: AsyncStream<Data>.Continuation!
+        self.stream = AsyncStream { streamContinuation in
+            continuation = streamContinuation
+        }
+        self.continuation = continuation
+        self.sequencer = ResponseStreamSequencer(startAt: startAt)
+        self.encoder = encoder
+    }
+
+    @discardableResult
+    public func emit<E: ResponseStreamProtocol>(_ event: E) async -> Bool {
+        let sequenceNumber: Int
+        if let provided = event.sequenceNumber {
+            sequenceNumber = provided
+        } else {
+            sequenceNumber = await sequencer.next()
+        }
+        guard let data = encoder.encodeData(event, sequenceNumber: sequenceNumber) else {
+            return false
+        }
+        continuation.yield(data)
+        return true
+    }
+
+    public func finish(sendDone: Bool = true) {
+        if sendDone {
+            continuation.yield(encoder.doneData())
+        }
+        continuation.finish()
+    }
+}
+
 // MARK: - ResponseStreamEvent Factory Methods (Server-Side Construction)
 
 public extension ResponseStreamEvent {
