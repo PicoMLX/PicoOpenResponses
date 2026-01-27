@@ -1,5 +1,5 @@
 import XCTest
-@testable import PicoResponsesSwiftUI
+@testable import OpenResponsesSwiftUI
 
 final class ConversationRequestBuilderTests: XCTestCase {
     func testBuilderAppliesTemperatureAndPenalties() {

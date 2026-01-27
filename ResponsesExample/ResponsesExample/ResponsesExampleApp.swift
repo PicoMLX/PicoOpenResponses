@@ -7,7 +7,7 @@
 
 import SwiftUI
 import OpenResponses
-import PicoResponsesSwiftUI
+import OpenResponsesSwiftUI
 
 @main
 struct ResponsesExampleApp: App {

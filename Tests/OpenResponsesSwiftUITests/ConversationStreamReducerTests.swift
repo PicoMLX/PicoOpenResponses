@@ -1,5 +1,5 @@
 import XCTest
-@testable import PicoResponsesSwiftUI
+@testable import OpenResponsesSwiftUI
 import OpenResponses
 
 final class ConversationStreamReducerTests: XCTestCase {

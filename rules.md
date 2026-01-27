@@ -18,8 +18,8 @@
 | --- | --- | --- | --- |
 | `OpenResponses` | Networking clients, request builders, Codable models mirroring OpenAI schemas, streaming plumbing, tool/function call abstractions. | Foundation, Swift Concurrency, URLSession, optional `MultipartKit` for uploads. | Constrain public surface to `Sendable` and `@unchecked Sendable` only when justified. |
 | `PicoResponsesConversation` | Conversation state manager, memory strategies, pagination helpers, history truncation policies. | `OpenResponses` | Provides pluggable summarization/truncation strategies. |
-| `PicoResponsesSwiftUI` | Observable view models, adapters for streaming updates, bindings to SwiftUI Observation framework. | `OpenResponses`, `Observation` | Use Swift 6 `@Observable` and `@MainActor` isolates. |
-| `PicoResponsesViews` | Reference SwiftUI views demonstrating conversation UIs, streaming indicators, tool invocation UI. | `PicoResponsesSwiftUI` | Keep opt-in; ship as examples, not mandated dependencies. |
+| `OpenResponsesSwiftUI` | Observable view models, adapters for streaming updates, bindings to SwiftUI Observation framework. | `OpenResponses`, `Observation` | Use Swift 6 `@Observable` and `@MainActor` isolates. |
+| `PicoResponsesViews` | Reference SwiftUI views demonstrating conversation UIs, streaming indicators, tool invocation UI. | `OpenResponsesSwiftUI` | Keep opt-in; ship as examples, not mandated dependencies. |
 | `PicoResponsesServer` | Hummingbird 2 helpers, request routing, middleware, and `ResponseCodable` conformances. | `OpenResponses`, Hummingbird 2, MLX-Swift (optional) | All HTTP handlers must be `Sendable` and support cancellation. |
 
 ## API Coverage Requirements

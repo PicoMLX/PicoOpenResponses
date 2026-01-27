@@ -3,7 +3,7 @@
 Handcrafted Swift clients and SwiftUI utilities for OpenAI-style Responses, Conversations, and Files endpoints. The package is split into two layers:
 
 - `OpenResponses` – Codable/Sendable models, JSONSchema helpers, structured errors, and an EventSource-powered HTTP client.
-- `PicoResponsesSwiftUI` – streaming reducers, conversation state snapshots, and an `@Observable` view model for SwiftUI apps.
+- `OpenResponsesSwiftUI` – streaming reducers, conversation state snapshots, and an `@Observable` view model for SwiftUI apps.
 
 ## Requirements
 
@@ -14,12 +14,12 @@ Handcrafted Swift clients and SwiftUI utilities for OpenAI-style Responses, Conv
 
 1. In Xcode choose **File ▸ Add Packages… ▸ Add Local…**.
 2. Select the root directory of this repository.
-3. Add the products you need (typically both `OpenResponses` and `PicoResponsesSwiftUI`).
+3. Add the products you need (typically both `OpenResponses` and `OpenResponsesSwiftUI`).
 4. Import the modules where you intend to use them:
 
 ```swift
 import OpenResponses
-import PicoResponsesSwiftUI
+import OpenResponsesSwiftUI
 ```
 
 ## Configuring the Core Client
@@ -290,7 +290,7 @@ event.isKnownEventType // Bool - true if type matches a known Kind
 ## Testing & Previews
 
 - `PreviewConversationService` feeds canned snapshots to SwiftUI previews.
-- Reducer tests in `PicoResponsesSwiftUITests` demonstrate how to simulate SSE events for unit testing.
+- Reducer tests in `OpenResponsesSwiftUITests` demonstrate how to simulate SSE events for unit testing.
 
 ## License
 

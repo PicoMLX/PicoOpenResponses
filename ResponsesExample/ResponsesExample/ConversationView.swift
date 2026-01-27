@@ -6,7 +6,7 @@
 //
 
 import SwiftUI
-import PicoResponsesSwiftUI
+import OpenResponsesSwiftUI
 import PicoMarkdownView
 //import Splash
 
