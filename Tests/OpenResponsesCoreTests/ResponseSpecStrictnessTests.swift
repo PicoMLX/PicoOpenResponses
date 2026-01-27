@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import PicoResponsesCore
+@testable import OpenResponses
 
 private func baseResponseJSON() -> [String: Any] {
     [

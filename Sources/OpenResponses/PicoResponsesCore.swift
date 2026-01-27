@@ -1,4 +1,4 @@
-public struct PicoResponsesCore: Sendable {
+public struct OpenResponses: Sendable {
     public let configuration: PicoResponsesConfiguration
     public let responses: ResponsesClient
     public let conversations: ConversationsClient

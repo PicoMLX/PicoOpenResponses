@@ -6,7 +6,7 @@
 //
 
 import SwiftUI
-import PicoResponsesCore
+import OpenResponses
 import PicoResponsesSwiftUI
 
 struct ContentView: View {

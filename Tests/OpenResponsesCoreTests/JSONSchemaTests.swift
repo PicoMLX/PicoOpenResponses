@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import PicoResponsesCore
+@testable import OpenResponses
 
 @Test func jsonSchemaEncodingAndDecoding() throws {
     let schema = JSONSchema.object(

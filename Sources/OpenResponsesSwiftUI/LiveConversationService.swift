@@ -1,5 +1,5 @@
 import Foundation
-import PicoResponsesCore
+import OpenResponses
 
 public struct ConversationRequestBuilder: Sendable {
     public enum HistoryStrategy: Sendable {

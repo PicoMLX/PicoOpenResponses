@@ -1,7 +1,7 @@
 import EventSource
 import Foundation
 import Testing
-@testable import PicoResponsesCore
+@testable import OpenResponses
 
 private func parseEvents(_ frames: [String]) async -> [EventSource.Event] {
     let parser = EventSource.Parser()

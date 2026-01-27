@@ -2,7 +2,7 @@
 
 Handcrafted Swift clients and SwiftUI utilities for OpenAI-style Responses, Conversations, and Files endpoints. The package is split into two layers:
 
-- `PicoResponsesCore` – Codable/Sendable models, JSONSchema helpers, structured errors, and an EventSource-powered HTTP client.
+- `OpenResponses` – Codable/Sendable models, JSONSchema helpers, structured errors, and an EventSource-powered HTTP client.
 - `PicoResponsesSwiftUI` – streaming reducers, conversation state snapshots, and an `@Observable` view model for SwiftUI apps.
 
 ## Requirements
@@ -14,11 +14,11 @@ Handcrafted Swift clients and SwiftUI utilities for OpenAI-style Responses, Conv
 
 1. In Xcode choose **File ▸ Add Packages… ▸ Add Local…**.
 2. Select the root directory of this repository.
-3. Add the products you need (typically both `PicoResponsesCore` and `PicoResponsesSwiftUI`).
+3. Add the products you need (typically both `OpenResponses` and `PicoResponsesSwiftUI`).
 4. Import the modules where you intend to use them:
 
 ```swift
-import PicoResponsesCore
+import OpenResponses
 import PicoResponsesSwiftUI
 ```
 
@@ -164,7 +164,7 @@ let stream = await liveService.startConversation(
 
 ## Server-Side Usage (Hummingbird / MLX)
 
-PicoResponsesCore can also be used server-side to produce OpenAI-compatible Responses API output. The package provides type-safe factory methods and convenience initializers for building responses.
+OpenResponses can also be used server-side to produce OpenAI-compatible Responses API output. The package provides type-safe factory methods and convenience initializers for building responses.
 
 ### Validating Incoming Requests
 

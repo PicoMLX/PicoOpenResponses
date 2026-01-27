@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import PicoResponsesCore
+@testable import OpenResponses
 
 @Test func toolChoiceEncodingRoundTrip() throws {
     let choice = ToolChoice.function(name: "weather")

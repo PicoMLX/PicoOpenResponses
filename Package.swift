@@ -4,7 +4,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "PicoResponses",
+    name: "OpenResponses",
     platforms: [
         .iOS(.v17),
         .macOS(.v14),
@@ -13,12 +13,12 @@ let package = Package(
     ],
     products: [
         .library(
-            name: "PicoResponsesCore",
-            targets: ["PicoResponsesCore"]
+            name: "OpenResponses",
+            targets: ["OpenResponses"]
         ),
         .library(
-            name: "PicoResponsesSwiftUI",
-            targets: ["PicoResponsesSwiftUI"]
+            name: "OpenResponsesSwiftUI",
+            targets: ["OpenResponsesSwiftUI"]
         )
     ],
     dependencies: [
@@ -26,24 +26,24 @@ let package = Package(
     ],
     targets: [
         .target(
-            name: "PicoResponsesCore",
+            name: "OpenResponses",
             dependencies: [
                 .product(name: "EventSource", package: "EventSource")
             ]
         ),
         .target(
-            name: "PicoResponsesSwiftUI",
+            name: "OpenResponsesSwiftUI",
             dependencies: [
-                "PicoResponsesCore"
+                "OpenResponses"
             ]
         ),
         .testTarget(
-            name: "PicoResponsesCoreTests",
-            dependencies: ["PicoResponsesCore"]
+            name: "OpenResponsesCoreTests",
+            dependencies: ["OpenResponses"]
         ),
         .testTarget(
-            name: "PicoResponsesSwiftUITests",
-            dependencies: ["PicoResponsesSwiftUI"]
+            name: "OpenResponsesSwiftUITests",
+            dependencies: ["OpenResponsesSwiftUI"]
         )
     ]
 )

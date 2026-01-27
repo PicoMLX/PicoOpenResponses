@@ -13,5 +13,5 @@
 // 8) JSON coding: AnyCodable edge cases, dates as epoch seconds, unknown enum fallback.
 // 9) Client flows: request/stream headers, stream precondition errors, decoding failures.
 //
-// OpenAI-specific extensions live in `Tests/PicoResponsesCoreTests/OpenAIExtensionsTests.swift`.
+// OpenAI-specific extensions live in `Tests/OpenResponsesTests/OpenAIExtensionsTests.swift`.
 // Tests intentionally include failing cases for known spec gaps so we can track compliance.

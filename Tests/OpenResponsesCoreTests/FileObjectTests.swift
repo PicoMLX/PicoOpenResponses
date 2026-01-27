@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import PicoResponsesCore
+@testable import OpenResponses
 
 @Test func fileObjectDecodesStatusDetails() throws {
     let payload: [String: Any] = [

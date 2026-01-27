@@ -1,6 +1,6 @@
 import XCTest
 @testable import PicoResponsesSwiftUI
-import PicoResponsesCore
+import OpenResponses
 
 final class ConversationStreamReducerTests: XCTestCase {
     func testDeltaAppendsAssistantMessage() {

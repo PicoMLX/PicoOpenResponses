@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import PicoResponsesCore
+@testable import OpenResponses
 
 @Test func responseAudioOptionsEncoding() throws {
     let options = ResponseAudioOptions(voice: "alloy", format: "wav")

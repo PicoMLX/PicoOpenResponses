@@ -1,5 +1,5 @@
 import Foundation
-import PicoResponsesCore
+import OpenResponses
 
 public enum ConversationResponsePhase: Sendable, Equatable {
     case idle
