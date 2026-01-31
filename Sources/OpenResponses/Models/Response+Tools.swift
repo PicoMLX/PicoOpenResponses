@@ -147,7 +147,7 @@ public enum ResponseTool: Codable, Sendable, Equatable {
         switch type {
         case "web_search":
             if dictionary.count > 1 {
-                let data = try JSONSerialization.data(withJSONObject: dictionary.jsonObject())
+                let data = try ResponsesJSONCoding.makeEncoder().encode(dictionary)
                 let config = try ResponsesJSONCoding.makeDecoder().decode(WebSearchConfig.self, from: data)
                 self = .webSearch(config)
             } else {
@@ -156,7 +156,7 @@ public enum ResponseTool: Codable, Sendable, Equatable {
 
         case "file_search":
             if dictionary.count > 1 {
-                let data = try JSONSerialization.data(withJSONObject: dictionary.jsonObject())
+                let data = try ResponsesJSONCoding.makeEncoder().encode(dictionary)
                 let config = try ResponsesJSONCoding.makeDecoder().decode(FileSearchConfig.self, from: data)
                 self = .fileSearch(config)
             } else {
@@ -165,7 +165,7 @@ public enum ResponseTool: Codable, Sendable, Equatable {
 
         case "code_interpreter":
             if dictionary.count > 1 {
-                let data = try JSONSerialization.data(withJSONObject: dictionary.jsonObject())
+                let data = try ResponsesJSONCoding.makeEncoder().encode(dictionary)
                 let config = try ResponsesJSONCoding.makeDecoder().decode(CodeInterpreterConfig.self, from: data)
                 self = .codeInterpreter(config)
             } else {
@@ -173,17 +173,17 @@ public enum ResponseTool: Codable, Sendable, Equatable {
             }
 
         case "computer_use":
-            let data = try JSONSerialization.data(withJSONObject: dictionary.jsonObject())
+            let data = try ResponsesJSONCoding.makeEncoder().encode(dictionary)
             let config = try ResponsesJSONCoding.makeDecoder().decode(ComputerUseConfig.self, from: data)
             self = .computerUse(config)
 
         case "function":
-            let data = try JSONSerialization.data(withJSONObject: dictionary.jsonObject())
+            let data = try ResponsesJSONCoding.makeEncoder().encode(dictionary)
             let definition = try ResponsesJSONCoding.makeDecoder().decode(ResponseToolDefinition.self, from: data)
             self = .function(definition)
 
         case "mcp":
-            let data = try JSONSerialization.data(withJSONObject: dictionary.jsonObject())
+            let data = try ResponsesJSONCoding.makeEncoder().encode(dictionary)
             let config = try ResponsesJSONCoding.makeDecoder().decode(MCPToolConfig.self, from: data)
             self = .mcp(config)
 
@@ -529,7 +529,7 @@ public enum ToolChoiceParam: Codable, Sendable, Equatable {
 
         switch type {
         case "allowed_tools":
-            let data = try JSONSerialization.data(withJSONObject: dictionary.jsonObject())
+            let data = try ResponsesJSONCoding.makeEncoder().encode(dictionary)
             let decoded = try ResponsesJSONCoding.makeDecoder().decode(AllowedToolsParam.self, from: data)
             self = .allowedTools(tools: decoded.tools, mode: decoded.mode)
 
@@ -606,7 +606,7 @@ public enum ToolChoice: Codable, Sendable, Equatable {
 
         switch type {
         case "allowed_tools":
-            let data = try JSONSerialization.data(withJSONObject: dictionary.jsonObject())
+            let data = try ResponsesJSONCoding.makeEncoder().encode(dictionary)
             let decoded = try ResponsesJSONCoding.makeDecoder().decode(AllowedToolChoice.self, from: data)
             self = .allowedTools(tools: decoded.tools, mode: decoded.mode)
 
@@ -764,8 +764,7 @@ public struct ResponseToolCall: Codable, Sendable, Equatable, Identifiable {
         if let s = arguments.string {
             try container.encode(s, forKey: .arguments)
         } else if let json = arguments.json {
-            let obj = json.jsonObject()
-            let data = try JSONSerialization.data(withJSONObject: obj)
+            let data = try ResponsesJSONCoding.makeEncoder().encode(json)
             let s = String(data: data, encoding: .utf8) ?? "{}"
             try container.encode(s, forKey: .arguments)
         } else {
@@ -810,8 +809,7 @@ public struct ResponseToolCall: Codable, Sendable, Equatable, Identifiable {
             if let string {
                 try container.encode(string)
             } else if let json {
-                let obj = json.jsonObject()
-                let data = try JSONSerialization.data(withJSONObject: obj)
+                let data = try ResponsesJSONCoding.makeEncoder().encode(json)
                 let s = String(data: data, encoding: .utf8) ?? "{}"
                 try container.encode(s)
             } else {
@@ -899,7 +897,7 @@ public struct ResponseToolOutput: Codable, Sendable, Equatable {
             case .string(let s):
                 return s
             case .array(let arr):
-                let data = try JSONSerialization.data(withJSONObject: arr.map { $0.jsonObject })
+                let data = try ResponsesJSONCoding.makeEncoder().encode(arr)
                 return String(data: data, encoding: .utf8) ?? "[]"
             }
         }
