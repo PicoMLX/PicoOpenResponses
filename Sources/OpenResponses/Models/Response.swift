@@ -2096,13 +2096,12 @@ public extension ResponseStreamEvent {
     /// Converts the event to an SSE-formatted string: "event: ...\ndata: {json}\n\n"
     /// Returns nil if serialization fails.
     func toSSEString() -> String? {
-        // Build the event data dictionary
-        var eventDict: [String: Any] = ["type": type]
+        var eventDict: [String: AnyCodable] = ["type": AnyCodable(type)]
         for (key, value) in data {
-            eventDict[key] = value.toJSONValue()
+            eventDict[key] = value
         }
-        
-        guard let jsonData = try? JSONSerialization.data(withJSONObject: eventDict),
+        let encoder = ResponsesJSONCoding.makeEncoder()
+        guard let jsonData = try? encoder.encode(eventDict),
               let jsonString = String(data: jsonData, encoding: .utf8) else {
             return nil
         }

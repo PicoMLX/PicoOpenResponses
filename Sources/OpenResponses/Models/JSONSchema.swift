@@ -210,7 +210,8 @@ extension Dictionary where Key == String, Value == AnyCodable {
     }
 
     func decode<T: Decodable>(_ type: T.Type, using decoder: JSONDecoder = ResponsesJSONCoding.makeDecoder()) -> T? {
-        guard let data = try? JSONSerialization.data(withJSONObject: jsonObject()) else {
+        let encoder = ResponsesJSONCoding.makeEncoder()
+        guard let data = try? encoder.encode(self) else {
             return nil
         }
         return try? decoder.decode(T.self, from: data)

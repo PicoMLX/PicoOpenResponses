@@ -267,17 +267,18 @@ public struct ResponseStreamEncoder: Sendable {
 
     private func encodeJSON<E: ResponseStreamProtocol>(_ event: E, sequenceNumber: Int?) -> String? {
         let encoder = ResponsesJSONCoding.makeEncoder()
+        let decoder = ResponsesJSONCoding.makeDecoder()
         guard let data = try? encoder.encode(event),
-              var dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+              var dict = try? decoder.decode([String: AnyCodable].self, from: data) else {
             return nil
         }
         if dict["type"] == nil {
-            dict["type"] = event.type
+            dict["type"] = AnyCodable(event.type)
         }
         if dict["sequence_number"] == nil, let sequenceNumber {
-            dict["sequence_number"] = sequenceNumber
+            dict["sequence_number"] = AnyCodable(sequenceNumber)
         }
-        guard let jsonData = try? JSONSerialization.data(withJSONObject: dict),
+        guard let jsonData = try? encoder.encode(dict),
               let jsonString = String(data: jsonData, encoding: .utf8) else {
             return nil
         }
@@ -579,13 +580,12 @@ public extension ResponseStreamEvent {
     /// Converts the event to an SSE-formatted string: "event: ...\ndata: {json}\n\n"
     /// Returns nil if serialization fails.
     func toSSEString() -> String? {
-        // Build the event data dictionary
-        var eventDict: [String: Any] = ["type": type]
+        var eventDict: [String: AnyCodable] = ["type": AnyCodable(type)]
         for (key, value) in data {
-            eventDict[key] = value.toJSONValue()
+            eventDict[key] = value
         }
-
-        guard let jsonData = try? JSONSerialization.data(withJSONObject: eventDict),
+        let encoder = ResponsesJSONCoding.makeEncoder()
+        guard let jsonData = try? encoder.encode(eventDict),
               let jsonString = String(data: jsonData, encoding: .utf8) else {
             return nil
         }
