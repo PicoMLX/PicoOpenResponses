@@ -240,6 +240,8 @@ The reasoning factories (`reasoningTextDelta`, `reasoningTextDone`) emit OpenAI'
 - `response.mcp_call_arguments.delta`, `response.mcp_call_arguments.done`
 - `response.mcp_list_tools.in_progress`, `response.mcp_list_tools.completed`, `response.mcp_list_tools.failed`
 
+A server that runs MCP tools itself builds these with `ResponseStreamEvent.mcpListTools(_:itemId:outputIndex:)`, `mcpCall(_:itemId:outputIndex:)`, `mcpCallArgumentsDelta` and `mcpCallArgumentsDone`, and its output items with `ResponseOutput.mcpListTools`, `mcpCall` and `mcpApprovalRequest`. `MCPToolConfig` reads the `mcp` tool's `allowed_tools`, as a list or a filter, and its `require_approval`.
+
 **Custom tools:**
 - `response.custom_tool_call_input.delta`, `response.custom_tool_call_input.done`
 
