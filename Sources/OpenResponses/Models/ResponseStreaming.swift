@@ -600,6 +600,89 @@ public extension ResponseStreamEvent {
 
     // MARK: - Private Helpers
 
+    // MARK: - MCP Events
+
+    /// Where an `mcp_list_tools` or `mcp_call` item is, for its progress events.
+    enum MCPProgress: Sendable {
+        case inProgress
+        case completed
+        case failed
+    }
+
+    /// `response.mcp_list_tools.in_progress`, `.completed` or `.failed`.
+    static func mcpListTools(
+        _ progress: MCPProgress,
+        itemId: String,
+        outputIndex: Int,
+        sequenceNumber: Int? = nil
+    ) -> ResponseStreamEvent {
+        let kind: Kind = switch progress {
+        case .inProgress: .responseMcpListToolsInProgress
+        case .completed: .responseMcpListToolsCompleted
+        case .failed: .responseMcpListToolsFailed
+        }
+        return mcpItemEvent(kind, itemId: itemId, outputIndex: outputIndex, sequenceNumber: sequenceNumber)
+    }
+
+    /// `response.mcp_call.in_progress`, `.completed` or `.failed`.
+    static func mcpCall(
+        _ progress: MCPProgress,
+        itemId: String,
+        outputIndex: Int,
+        sequenceNumber: Int? = nil
+    ) -> ResponseStreamEvent {
+        let kind: Kind = switch progress {
+        case .inProgress: .responseMcpCallInProgress
+        case .completed: .responseMcpCallCompleted
+        case .failed: .responseMcpCallFailed
+        }
+        return mcpItemEvent(kind, itemId: itemId, outputIndex: outputIndex, sequenceNumber: sequenceNumber)
+    }
+
+    private static func mcpItemEvent(
+        _ kind: Kind,
+        itemId: String,
+        outputIndex: Int,
+        sequenceNumber: Int?
+    ) -> ResponseStreamEvent {
+        var data: [String: AnyCodable] = [
+            "item_id": AnyCodable(itemId),
+            "output_index": AnyCodable(outputIndex)
+        ]
+        addSequenceNumber(sequenceNumber, to: &data)
+        return ResponseStreamEvent(kind: kind, data: data)
+    }
+
+    static func mcpCallArgumentsDelta(
+        itemId: String,
+        outputIndex: Int,
+        delta: String,
+        sequenceNumber: Int? = nil
+    ) -> ResponseStreamEvent {
+        var data: [String: AnyCodable] = [
+            "item_id": AnyCodable(itemId),
+            "output_index": AnyCodable(outputIndex),
+            "delta": AnyCodable(delta)
+        ]
+        addSequenceNumber(sequenceNumber, to: &data)
+        return ResponseStreamEvent(kind: .responseMcpCallArgumentsDelta, data: data)
+    }
+
+    static func mcpCallArgumentsDone(
+        itemId: String,
+        outputIndex: Int,
+        arguments: String,
+        sequenceNumber: Int? = nil
+    ) -> ResponseStreamEvent {
+        var data: [String: AnyCodable] = [
+            "item_id": AnyCodable(itemId),
+            "output_index": AnyCodable(outputIndex),
+            "arguments": AnyCodable(arguments)
+        ]
+        addSequenceNumber(sequenceNumber, to: &data)
+        return ResponseStreamEvent(kind: .responseMcpCallArgumentsDone, data: data)
+    }
+
     private static func encodeResponse(_ response: ResponseObject) -> [String: Any] {
         let encoder = ResponsesJSONCoding.makeEncoder()
         guard let data = try? encoder.encode(response),

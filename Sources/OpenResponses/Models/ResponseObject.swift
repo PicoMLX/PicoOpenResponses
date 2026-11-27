@@ -379,6 +379,7 @@ public enum ResponseOutputType: Codable, Sendable, Equatable {
     case codeInterpreterCall
     case mcpCall
     case mcpListTools
+    case mcpApprovalRequest
     case imageGenerationCall
     case custom(String)
 
@@ -404,6 +405,8 @@ public enum ResponseOutputType: Codable, Sendable, Equatable {
             self = .mcpCall
         case "mcp_list_tools":
             self = .mcpListTools
+        case "mcp_approval_request":
+            self = .mcpApprovalRequest
         case "image_generation_call":
             self = .imageGenerationCall
         default:
@@ -433,6 +436,8 @@ public enum ResponseOutputType: Codable, Sendable, Equatable {
             raw = "mcp_call"
         case .mcpListTools:
             raw = "mcp_list_tools"
+        case .mcpApprovalRequest:
+            raw = "mcp_approval_request"
         case .imageGenerationCall:
             raw = "image_generation_call"
         case .custom(let value):
@@ -456,6 +461,14 @@ public struct ResponseOutput: Codable, Sendable, Equatable {
     public let metadata: [String: AnyCodable]?
     public let refusal: ResponseRefusal?
     public let summary: [AnyCodable]?
+    /// The MCP server of an `mcp_call`, `mcp_list_tools` or `mcp_approval_request` item.
+    public let serverLabel: String?
+    /// The `mcp_approval_request` an `mcp_call` ran under, if it needed approval.
+    public let approvalRequestId: String?
+    /// Why an `mcp_call` or `mcp_list_tools` item failed.
+    public let error: String?
+    /// The tools an `mcp_list_tools` item lists.
+    public let tools: [MCPListedTool]?
 
     public init(
         id: String,
@@ -470,7 +483,11 @@ public struct ResponseOutput: Codable, Sendable, Equatable {
         encryptedContent: String? = nil,
         metadata: [String: AnyCodable]? = nil,
         refusal: ResponseRefusal? = nil,
-        summary: [AnyCodable]? = nil
+        summary: [AnyCodable]? = nil,
+        serverLabel: String? = nil,
+        approvalRequestId: String? = nil,
+        error: String? = nil,
+        tools: [MCPListedTool]? = nil
     ) {
         self.id = id
         self.type = type
@@ -485,6 +502,10 @@ public struct ResponseOutput: Codable, Sendable, Equatable {
         self.metadata = metadata
         self.refusal = refusal
         self.summary = summary
+        self.serverLabel = serverLabel
+        self.approvalRequestId = approvalRequestId
+        self.error = error
+        self.tools = tools
     }
 
     public init(
@@ -531,6 +552,10 @@ public struct ResponseOutput: Codable, Sendable, Equatable {
         case metadata
         case refusal
         case summary
+        case serverLabel
+        case approvalRequestId
+        case error
+        case tools
         // tool_choice is not present at the item level
     }
 
@@ -613,6 +638,17 @@ public struct ResponseOutput: Codable, Sendable, Equatable {
             self.role = try container.decodeIfPresent(MessageRole.self, forKey: .role)
             self.summary = try container.decodeIfPresent([AnyCodable].self, forKey: .summary)
             self.encryptedContent = try container.decodeIfPresent(String.self, forKey: .encryptedContent)
+        case .mcpCall, .mcpListTools, .mcpApprovalRequest:
+            // OpenAI's MCP items: `status` is optional, and only `mcp_call` has it.
+            self.status = try container.decodeIfPresent(ResponseItemStatus.self, forKey: .status) ?? .completed
+            self.content = []
+            self.role = nil
+            self.callId = nil
+            self.summary = nil
+            self.encryptedContent = nil
+            self.name = try container.decodeIfPresent(String.self, forKey: .name)
+            self.arguments = try container.decodeIfPresent(ResponseToolCall.Arguments.self, forKey: .arguments)
+            self.output = try container.decodeIfPresent(ResponseToolOutput.Payload.self, forKey: .output)
         default:
             guard container.contains(.status) else {
                 throw DecodingError.keyNotFound(
@@ -653,6 +689,10 @@ public struct ResponseOutput: Codable, Sendable, Equatable {
 
         self.metadata = try container.decodeIfPresent([String: AnyCodable].self, forKey: .metadata)
         self.refusal = try container.decodeIfPresent(ResponseRefusal.self, forKey: .refusal)
+        self.serverLabel = try container.decodeIfPresent(String.self, forKey: .serverLabel)
+        self.approvalRequestId = try container.decodeIfPresent(String.self, forKey: .approvalRequestId)
+        self.error = try container.decodeIfPresent(String.self, forKey: .error)
+        self.tools = try container.decodeIfPresent([MCPListedTool].self, forKey: .tools)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -721,6 +761,26 @@ public struct ResponseOutput: Codable, Sendable, Equatable {
             try container.encode(callId, forKey: .callId)
             try container.encode(output, forKey: .output)
             try container.encode(status, forKey: .status)
+
+        case .mcpCall:
+            // OpenAI's `mcp_call`: `output` and `error` are null until the call finishes.
+            try container.encode(serverLabel ?? "", forKey: .serverLabel)
+            try container.encode(name ?? "", forKey: .name)
+            try container.encode(arguments ?? ResponseToolCall.Arguments(string: "{}"), forKey: .arguments)
+            try container.encode(status, forKey: .status)
+            try container.encode(output, forKey: .output)
+            try container.encode(error, forKey: .error)
+            try container.encode(approvalRequestId, forKey: .approvalRequestId)
+
+        case .mcpListTools:
+            try container.encode(serverLabel ?? "", forKey: .serverLabel)
+            try container.encode(tools ?? [], forKey: .tools)
+            try container.encodeIfPresent(error, forKey: .error)
+
+        case .mcpApprovalRequest:
+            try container.encode(serverLabel ?? "", forKey: .serverLabel)
+            try container.encode(name ?? "", forKey: .name)
+            try container.encode(arguments ?? ResponseToolCall.Arguments(string: "{}"), forKey: .arguments)
 
         default:
             try container.encodeIfPresent(role, forKey: .role)
@@ -816,6 +876,66 @@ public extension ResponseOutput {
             callId: callId,
             name: name,
             arguments: arguments
+        )
+    }
+
+    /// An `mcp_call` item: a tool that the server ran on an MCP server. `output` and `error`
+    /// stay `nil` while the call runs.
+    static func mcpCall(
+        id: String = "mcp_\(UUID().uuidString)",
+        serverLabel: String,
+        name: String,
+        arguments: String,
+        output: String? = nil,
+        error: String? = nil,
+        approvalRequestId: String? = nil,
+        status: ResponseItemStatus = .completed
+    ) -> ResponseOutput {
+        ResponseOutput(
+            id: id,
+            type: .mcpCall,
+            status: status,
+            name: name,
+            arguments: ResponseToolCall.Arguments(string: arguments),
+            output: output.map { .string($0) },
+            serverLabel: serverLabel,
+            approvalRequestId: approvalRequestId,
+            error: error
+        )
+    }
+
+    /// An `mcp_list_tools` item: the tools an MCP server offers this request.
+    static func mcpListTools(
+        id: String = "mcpl_\(UUID().uuidString)",
+        serverLabel: String,
+        tools: [MCPListedTool],
+        error: String? = nil
+    ) -> ResponseOutput {
+        ResponseOutput(
+            id: id,
+            type: .mcpListTools,
+            status: .completed,
+            serverLabel: serverLabel,
+            error: error,
+            tools: tools
+        )
+    }
+
+    /// An `mcp_approval_request` item: a call that waits for the user's approval. The client
+    /// answers with an `mcp_approval_response` input item.
+    static func mcpApprovalRequest(
+        id: String = "mcpr_\(UUID().uuidString)",
+        serverLabel: String,
+        name: String,
+        arguments: String
+    ) -> ResponseOutput {
+        ResponseOutput(
+            id: id,
+            type: .mcpApprovalRequest,
+            status: .completed,
+            name: name,
+            arguments: ResponseToolCall.Arguments(string: arguments),
+            serverLabel: serverLabel
         )
     }
 

@@ -109,17 +109,135 @@ public struct CodeInterpreterConfig: Codable, Sendable, Equatable {
     }
 }
 
+/// Selects some of an MCP server's tools, as OpenAI's `allowed_tools` and `require_approval`
+/// filters do: by name, and by whether the server marks a tool read-only.
+public struct MCPToolFilter: Codable, Sendable, Equatable {
+    public let toolNames: [String]?
+    /// Matches the tools the server annotates with `readOnlyHint`.
+    public let readOnly: Bool?
+
+    public init(toolNames: [String]? = nil, readOnly: Bool? = nil) {
+        self.toolNames = toolNames
+        self.readOnly = readOnly
+    }
+}
+
+/// Which of an MCP server's tools need the user's approval before they run.
+/// OpenAI treats an omitted `require_approval` as `always`.
+public enum MCPApprovalRequirement: Codable, Sendable, Equatable {
+    case always
+    case never
+    /// Tools that match `never` run without approval; tools that match `always` need it.
+    case filter(always: MCPToolFilter?, never: MCPToolFilter?)
+
+    private enum CodingKeys: String, CodingKey {
+        case always
+        case never
+    }
+
+    public init(from decoder: Decoder) throws {
+        if let value = try? decoder.singleValueContainer().decode(String.self) {
+            switch value {
+            case "always": self = .always
+            case "never": self = .never
+            default:
+                throw DecodingError.dataCorrupted(DecodingError.Context(
+                    codingPath: decoder.codingPath,
+                    debugDescription: "require_approval must be \"always\", \"never\" or a filter object."
+                ))
+            }
+            return
+        }
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self = .filter(
+            always: try container.decodeIfPresent(MCPToolFilter.self, forKey: .always),
+            never: try container.decodeIfPresent(MCPToolFilter.self, forKey: .never)
+        )
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        switch self {
+        case .always:
+            var container = encoder.singleValueContainer()
+            try container.encode("always")
+        case .never:
+            var container = encoder.singleValueContainer()
+            try container.encode("never")
+        case .filter(let always, let never):
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encodeIfPresent(always, forKey: .always)
+            try container.encodeIfPresent(never, forKey: .never)
+        }
+    }
+}
+
 public struct MCPToolConfig: Codable, Sendable, Equatable {
     public let serverLabel: String
     public let serverUrl: String?
-    public let allowedTools: [String]?
+    /// OpenAI's `allowed_tools`: a list of names, or a filter object. A list decodes as a
+    /// filter with only `toolNames`, and such a filter encodes back as a list.
+    public let allowedTools: MCPToolFilter?
+    public let requireApproval: MCPApprovalRequirement?
 
-    public init(serverLabel: String, serverUrl: String? = nil, allowedTools: [String]? = nil) {
+    public init(
+        serverLabel: String,
+        serverUrl: String? = nil,
+        allowedTools: MCPToolFilter? = nil,
+        requireApproval: MCPApprovalRequirement? = nil
+    ) {
         self.serverLabel = serverLabel
         self.serverUrl = serverUrl
         self.allowedTools = allowedTools
+        self.requireApproval = requireApproval
     }
 
+    private enum CodingKeys: String, CodingKey {
+        case serverLabel
+        case serverUrl
+        case allowedTools
+        case requireApproval
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.serverLabel = try container.decode(String.self, forKey: .serverLabel)
+        self.serverUrl = try container.decodeIfPresent(String.self, forKey: .serverUrl)
+        if let names = try? container.decodeIfPresent([String].self, forKey: .allowedTools) {
+            self.allowedTools = MCPToolFilter(toolNames: names)
+        } else {
+            self.allowedTools = try container.decodeIfPresent(MCPToolFilter.self, forKey: .allowedTools)
+        }
+        self.requireApproval = try container.decodeIfPresent(MCPApprovalRequirement.self, forKey: .requireApproval)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(serverLabel, forKey: .serverLabel)
+        try container.encodeIfPresent(serverUrl, forKey: .serverUrl)
+        if let allowedTools, allowedTools.readOnly == nil, let names = allowedTools.toolNames {
+            try container.encode(names, forKey: .allowedTools)
+        } else {
+            try container.encodeIfPresent(allowedTools, forKey: .allowedTools)
+        }
+        try container.encodeIfPresent(requireApproval, forKey: .requireApproval)
+    }
+}
+
+/// A tool an MCP server offers, as an `mcp_list_tools` item lists it.
+public struct MCPListedTool: Codable, Sendable, Equatable {
+    public let name: String
+    public let description: String?
+    /// The tool's input JSON schema.
+    public let inputSchema: AnyCodable
+    /// The tool's MCP annotations, such as `readOnlyHint`.
+    public let annotations: AnyCodable?
+
+    public init(name: String, description: String? = nil, inputSchema: AnyCodable, annotations: AnyCodable? = nil) {
+        self.name = name
+        self.description = description
+        self.inputSchema = inputSchema
+        self.annotations = annotations
+    }
 }
 
 // MARK: - ResponseTool Enum
@@ -260,16 +378,9 @@ public enum ResponseTool: Codable, Sendable, Equatable {
             try container.encode(definition)
 
         case .mcp(let config):
-            var payload: [String: AnyCodable] = [
-                "type": AnyCodable("mcp"),
-                "server_label": AnyCodable(config.serverLabel)
-            ]
-            if let url = config.serverUrl {
-                payload["server_url"] = AnyCodable(url)
-            }
-            if let allowed = config.allowedTools {
-                payload["allowed_tools"] = AnyCodable(allowed)
-            }
+            let data = try ResponsesJSONCoding.makeEncoder().encode(config)
+            var payload = try ResponsesJSONCoding.makeDecoder().decode([String: AnyCodable].self, from: data)
+            payload["type"] = AnyCodable("mcp")
             try container.encode(payload)
 
         case .other(_, let payload):
