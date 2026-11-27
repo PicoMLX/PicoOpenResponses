@@ -219,6 +219,8 @@ let viewModel = ConversationViewModel(service: service)
 - `response.reasoning_summary_part.added`, `response.reasoning_summary_part.done`
 - `response.reasoning_summary_text.delta`, `response.reasoning_summary_text.done`
 
+The reasoning factories (`reasoningTextDelta`, `reasoningTextDone`) emit OpenAI's `response.reasoning_text.*` names, which most servers and clients use. `ResponseStreamEvent.reasoningTextDelta` decodes both spellings.
+
 **File search:**
 - `response.file_search_call.in_progress`, `response.file_search_call.searching`, `response.file_search_call.completed`
 
