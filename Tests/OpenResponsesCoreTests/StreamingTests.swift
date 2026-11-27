@@ -113,3 +113,52 @@ private func parseEvents(_ frames: [String]) async -> [EventSource.Event] {
     #expect(errorEvent.streamError?.message == "failed")
     #expect(errorEvent.streamError?.code == "server_error")
 }
+
+private func encodedFrame(_ event: ResponseStreamEvent) throws -> (eventLine: String, payload: [String: AnyCodable]) {
+    let frame = try #require(ResponseStreamEncoder().encodeString(event))
+    let lines = frame.split(separator: "\n")
+    let eventLine = try #require(lines.first { $0.hasPrefix("event: ") })
+    let dataLine = try #require(lines.first { $0.hasPrefix("data: ") })
+    let payload = try ResponsesJSONCoding.makeDecoder().decode(
+        [String: AnyCodable].self,
+        from: Data(dataLine.dropFirst("data: ".count).utf8)
+    )
+    return (String(eventLine), payload)
+}
+
+// OpenAI clients and SDKs don't recognize `response.reasoning.*`, so the reasoning
+// factories use OpenAI's `response.reasoning_text.*` names.
+@Test func reasoningTextDeltaFactoryEmitsOpenAIEventName() throws {
+    let event = ResponseStreamEvent.reasoningTextDelta(
+        itemId: "rs_1", outputIndex: 0, contentIndex: 0, delta: "Let me think")
+    #expect(event.kind == .responseReasoningTextDelta)
+
+    let (eventLine, payload) = try encodedFrame(event)
+    #expect(eventLine == "event: response.reasoning_text.delta")
+    #expect(payload["type"]?.stringValue == "response.reasoning_text.delta")
+    #expect(payload["item_id"]?.stringValue == "rs_1")
+    #expect(payload["output_index"]?.intValue == 0)
+    #expect(payload["content_index"]?.intValue == 0)
+    #expect(payload["delta"]?.stringValue == "Let me think")
+}
+
+@Test func reasoningTextDoneFactoryEmitsOpenAIEventName() throws {
+    let event = ResponseStreamEvent.reasoningTextDone(
+        itemId: "rs_1", outputIndex: 1, contentIndex: 0, text: "Let me think. Done.")
+    #expect(event.kind == .responseReasoningTextDone)
+
+    let (eventLine, payload) = try encodedFrame(event)
+    #expect(eventLine == "event: response.reasoning_text.done")
+    #expect(payload["type"]?.stringValue == "response.reasoning_text.done")
+    #expect(payload["item_id"]?.stringValue == "rs_1")
+    #expect(payload["output_index"]?.intValue == 1)
+    #expect(payload["content_index"]?.intValue == 0)
+    #expect(payload["text"]?.stringValue == "Let me think. Done.")
+}
+
+@Test(arguments: ["response.reasoning_text.delta", "response.reasoning.delta"])
+func reasoningTextDeltaDecodesBothEventNames(type: String) {
+    let event = ResponseStreamEvent(type: type, data: ["delta": AnyCodable("Let me think")])
+    #expect(event.reasoningTextDelta?.text == "Let me think")
+    #expect(event.outputTextDelta == nil)
+}

@@ -86,11 +86,12 @@ public struct ResponseStreamEvent: Sendable, Equatable, ResponseStreamProtocol {
         case responseFunctionCallArgumentsDelta = "response.function_call_arguments.delta"
         case responseFunctionCallArgumentsDone = "response.function_call_arguments.done"
 
-        // Reasoning (Open Responses)
+        // Reasoning text, under the names in the Open Responses OpenAPI document.
+        // Decoded, but the factories emit the `reasoning_text` names below.
         case responseReasoningDelta = "response.reasoning.delta"
         case responseReasoningDone = "response.reasoning.done"
 
-        // Reasoning text (OpenAI extension)
+        // Reasoning text, under the names OpenAI's Responses API uses.
         case responseReasoningTextDelta = "response.reasoning_text.delta"
         case responseReasoningTextDone = "response.reasoning_text.done"
 
@@ -482,6 +483,14 @@ public extension ResponseStreamEvent {
 
     // MARK: - Reasoning Events
 
+    // These emit `response.reasoning_text.delta` and `.done`, not the
+    // `response.reasoning.delta` and `.done` that the Open Responses OpenAPI
+    // document lists. The spec's own streaming rule names deltas
+    // `response.<content_type>.delta`, and raw reasoning is a `reasoning_text`
+    // part. OpenAI, vLLM, llama.cpp and OpenRouter send `reasoning_text`, and
+    // OpenAI's SDKs don't recognize the other names. Proposed spec fix:
+    // https://github.com/openresponses/openresponses/pull/42
+
     static func reasoningTextDelta(
         itemId: String,
         outputIndex: Int,
@@ -496,7 +505,7 @@ public extension ResponseStreamEvent {
             "delta": AnyCodable(delta)
         ]
         addSequenceNumber(sequenceNumber, to: &data)
-        return ResponseStreamEvent(kind: .responseReasoningDelta, data: data)
+        return ResponseStreamEvent(kind: .responseReasoningTextDelta, data: data)
     }
 
     static func reasoningTextDone(
@@ -513,7 +522,7 @@ public extension ResponseStreamEvent {
             "text": AnyCodable(text)
         ]
         addSequenceNumber(sequenceNumber, to: &data)
-        return ResponseStreamEvent(kind: .responseReasoningDone, data: data)
+        return ResponseStreamEvent(kind: .responseReasoningTextDone, data: data)
     }
 
     // MARK: - Function Call Events
